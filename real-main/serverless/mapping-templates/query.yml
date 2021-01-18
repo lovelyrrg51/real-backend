@@ -1,0 +1,104 @@
+- type: Query
+  field: usernameStatus
+  dataSource: DynamodbDataSource
+
+- type: Query
+  field: self
+  request: Query.self/before.request.vtl
+  response: Query.self/after.response.vtl
+  kind: PIPELINE
+  functions:
+    - Users.batchGet
+
+- type: Query
+  field: user
+  request: Query.user/before.request.vtl
+  response: Query.user/after.response.vtl
+  kind: PIPELINE
+  functions:
+    - Users.batchGet
+    - Users.batchGet.blockerStatus
+    - Users.batchGet.followedStatus
+
+- type: Query
+  field: searchUsers
+  dataSource: ElasticSearchDataSource
+
+- type: Query
+  field: trendingUsers
+  dataSource: DynamodbDataSource
+
+- type: Query
+  field: findContacts
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Query
+  field: post
+  request: Query.post/before.request.vtl
+  response: Query.post/after.response.vtl
+  kind: PIPELINE
+  functions:
+    - Posts.batchGet
+    - Posts.filterBy.postStatus
+    - Users.beginPipeline
+    - Users.batchGet
+    - Users.batchGet.blockerStatus
+    - Users.filterBy.blockerStatus
+    - Users.batchGet.followedStatus
+    - Users.filterBy.followedStatus
+    - Users.endPipeline
+
+- type: Query
+  field: trendingPosts
+  dataSource: DynamodbDataSource
+
+- type: Query
+  field: album
+  request: Query.album/before.request.vtl
+  response: Query.album/after.response.vtl
+  kind: PIPELINE
+  functions:
+    - Albums.batchGet
+    - Users.beginPipeline
+    - Users.batchGet
+    - Users.batchGet.blockerStatus
+    - Users.filterBy.blockerStatus
+    - Users.batchGet.followedStatus
+    - Users.filterBy.followedStatus
+    - Users.endPipeline
+
+- type: Query
+  field: chat
+  request: Query.chat/before.request.vtl
+  response: Query.chat/after.response.vtl
+  kind: PIPELINE
+  functions:
+    - ChatMemberships.batchGet
+    - Query.chat.transform
+    - Chats.batchGet
+
+- type: Query
+  field: findPosts
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Query
+  field: similarPosts
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Query
+  field: searchKeywords
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Query
+  field: swipedRightUsers
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl

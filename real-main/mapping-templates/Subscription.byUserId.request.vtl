@@ -1,0 +1,11 @@
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#set ($userId = $ctx.args.userId)
+
+#if ($userId != $callerUserId)
+  $util.error('ClientError: Cannot subscribe to notifications intended for another user', 'ClientError')
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson(null)
+}

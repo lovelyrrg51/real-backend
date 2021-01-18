@@ -1,0 +1,29 @@
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#set ($targetUserId = $ctx.source.userId)
+
+## no direct chats with ourselves
+#if ($callerUser == $targetUserId)
+  #return
+#end
+
+## sort the user id's
+#if ($callerUserId.compareTo($targetUserId) < 0)
+  #set ($firstUserId = $callerUserId)
+  #set ($secondUserId = $targetUserId)
+#else
+  #set ($firstUserId = $targetUserId)
+  #set ($secondUserId = $callerUserId)
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "Query",
+  "query": {
+    "expression": "gsiA1PartitionKey = :pk",
+    "expressionValues": {
+      ":pk": { "S": "chat/$firstUserId/$secondUserId" },
+    }
+  },
+  "index": "GSI-A1",
+  "limit": 1
+}

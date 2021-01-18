@@ -1,0 +1,11 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+
+#if ($util.isNull($ctx.result))
+  #set ($status = 'NOT_FOLLOWING')
+#else
+  #set ($status = $ctx.result.followStatus)
+#end
+
+$util.toJson($status)

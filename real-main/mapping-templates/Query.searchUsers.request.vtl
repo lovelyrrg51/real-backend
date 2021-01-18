@@ -1,0 +1,38 @@
+#if ($ctx.args.limit < -1 or $ctx.args.limit > 100)
+  $util.error('ClientError: Limit cannot be less than -1 or greater than 100', 'ClientError')
+#end
+#if ($ctx.args.limit == -1)
+  #set ($limit = 100)
+#else
+  #set ($limit = $util.defaultIfNull($ctx.args.limit, 20))
+#end
+
+#set ($query = $ctx.args.searchToken.trim())
+
+#if ($query.isEmpty())
+  $util.error('ClientError: Empty queries are not allowed', 'ClientError')
+#end
+
+{
+  "version": "2017-02-28",
+  "operation": "GET",
+  "path": "/users/_search",
+  "params": {
+    "headers": {},
+    "queryString": {},
+    "body": {
+      "from": $util.defaultIfNull($ctx.args.nextToken, 0),
+      "size": $limit,
+      "query": {
+        "bool": {
+          "should": [
+            {"match_bool_prefix": {"username": {"query": $util.toJson($query), "boost": 2}}},
+            {"match_bool_prefix": {"fullName": $util.toJson($query)}},
+            {"match": {"username": {"query": $util.toJson($query), "boost": 2}}},
+            {"match": {"fullName": $util.toJson($query)}}
+          ]
+        }
+      }
+    }
+  }
+}

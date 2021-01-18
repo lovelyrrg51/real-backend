@@ -1,0 +1,18 @@
+- type: Comment
+  field: textTaggedUsers
+  request: Source.textTaggedUsers/before.request.vtl
+  response: Source.textTaggedUsers/after.response.vtl
+  kind: PIPELINE
+  functions:
+    - Users.batchGet
+    - Users.batchGet.blockerStatus
+    - Users.filterBy.blockerStatus
+    - Users.batchGet.followedStatus
+
+- type: Comment
+  field: viewedStatus
+  dataSource: DynamodbDataSource
+
+- type: Comment
+  field: flagStatus
+  dataSource: DynamodbDataSource

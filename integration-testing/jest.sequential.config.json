@@ -1,0 +1,6 @@
+{
+  "maxWorkers": 1,
+  "testRegex": "/tests/.*\\.sequential\\.test\\.js$",
+  "testRunner": "jest-circus/runner",
+  "testTimeout": 60000
+}

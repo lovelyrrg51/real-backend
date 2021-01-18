@@ -1,0 +1,22 @@
+#if ($ctx.args.limit < 1 or $ctx.args.limit > 100)
+  $util.error('ClientError: Limit cannot be less than 1 or greater than 100', 'ClientError')
+#end
+#set ($limit = $util.defaultIfNull($ctx.args.limit, 20))
+
+{
+  "version": "2018-05-29",
+  "operation": "Query",
+  "query": {
+    "expression": "gsiK3PartitionKey = :pk and gsiK3SortKey > :skMin",
+    "expressionValues": {
+      ":pk": { "S": "post/$ctx.source.albumId" },
+      ":skMin": { "N": "-1" }
+    }
+  },
+  "index": "GSI-K3",
+  "scanIndexForward": true,
+  "limit": $limit
+  #if ($ctx.args.nextToken)
+  , "nextToken": "$ctx.args.nextToken"
+  #end
+}

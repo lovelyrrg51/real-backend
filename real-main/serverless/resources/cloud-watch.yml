@@ -1,0 +1,79 @@
+Resources:
+
+  # Based off the cloudformation template output of serverless-plugin-aws-alerts
+  AppSyncServerErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      Namespace: ${self:provider.stackName}
+      MetricName: AppSyncServerErrors
+      Threshold: 1
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref AwsAlertsAlarm
+      TreatMissingData: missing
+      Statistic: Sum
+
+  AppSyncServerErrorLogMetricFilterALERT:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterPattern: '{ $.fieldInError IS TRUE && $.errors[0] != "* errorType=ClientError, *" }'
+      LogGroupName: !Join [ /, [ /aws/appsync/apis, !GetAtt GraphQlApi.ApiId ] ]
+      MetricTransformations:
+        - MetricValue: 1
+          MetricNamespace: ${self:provider.stackName}
+          MetricName: AppSyncServerErrors
+
+  AppSyncServerErrorLogMetricFilterOK:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterPattern: ''
+      LogGroupName: !Join [ /, [ /aws/appsync/apis, !GetAtt GraphQlApi.ApiId ] ]
+      MetricTransformations:
+        - MetricValue: 0
+          MetricNamespace: ${self:provider.stackName}
+          MetricName: AppSyncServerErrors
+
+  SMSSpendLimitErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      Namespace: ${self:provider.stackName}
+      MetricName: SMSSpendLimitErrors
+      Threshold: 1
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref AwsAlertsAlarm
+      TreatMissingData: missing
+      Statistic: Sum
+
+  # Note that this log group referenced here is per-account, not per-deployment. It is automatically created
+  # by SNS if it doesn't exist upon the first SMS message delivery failure.
+  #
+  # We can't manage the log group via cloudformation because doing so would prevent us from having multiple
+  # deployments per account. However, we can set up per-deployment alerts (as is done here). The downside is that
+  # the log group must exist before first deployment, and thus must be done manually as noted in the README.
+
+  SMSSpendLimitErrorLogMetricFilterALERT:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterPattern: '{ $.delivery.providerResponse = "No quota left for account" }'
+      LogGroupName: !Join [ /, [ 'sns', '#{AWS::Region}', '#{AWS::AccountId}', 'DirectPublishToPhoneNumber', 'Failure' ] ]
+      MetricTransformations:
+        - MetricValue: 1
+          MetricNamespace: ${self:provider.stackName}
+          MetricName: SMSSpendLimitErrors
+
+  SMSSpendLimitErrorLogMetricFilterOK:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      FilterPattern: ''
+      LogGroupName: !Join [ /, [ 'sns', '#{AWS::Region}', '#{AWS::AccountId}', 'DirectPublishToPhoneNumber', 'Failure' ] ]
+      MetricTransformations:
+        - MetricValue: 0
+          MetricNamespace: ${self:provider.stackName}
+          MetricName: SMSSpendLimitErrors

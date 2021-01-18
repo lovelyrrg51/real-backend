@@ -1,0 +1,704 @@
+# Welcome to Serverless!
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+
+service: real-main
+frameworkVersion: '>=1.0.0 <2.0.0'
+
+provider:
+  name: aws
+  logRetentionInDays: 7
+  profile: real-${self:provider.stage}
+  runtime: python3.8
+  stackName: real-${self:provider.stage}-main
+  stage: ${opt:stage, 'dev'}
+  timeout: 30
+  tracing:
+    lambda: true
+
+  environment:
+    # AWS_REGION is supplied by default by lambda
+    AWS_ACCOUNT_ID: '#{AWS::AccountId}'
+
+    APPSYNC_GRAPHQL_URL: '#{GraphQlApi.GraphQLUrl}'
+    ELASTICSEARCH_DOMAIN: !GetAtt ElasticSearchDomain.DomainEndpoint
+    MEDIACONVERT_ROLE_ARN: !GetAtt MediaCovertRole.Arn
+    PINPOINT_APPLICATION_ID: !Ref PinpointApp
+    REAL_USER_ID: ${env:REAL_USER_ID, 'us-east-1:8a4d7c3b-809e-4182-859c-a2bdafa1a8ae'}  # default is correct value for production
+
+    DYNAMO_TABLE: ${self:provider.stackName}
+    DYNAMO_FEED_TABLE: real-${self:provider.stage}-feed
+    DYNAMO_MATCHES_TABLE: real-${self:provider.stage}-dating-matches
+
+    REAL_DATING_PUT_USER_ARN: ${self:custom.realDating.lambdaFunctionArnPrefix}-put-user
+    REAL_DATING_REMOVE_USER_ARN: ${self:custom.realDating.lambdaFunctionArnPrefix}-remove-user
+    REAL_DATING_MATCH_STATUS_ARN: ${self:custom.realDating.lambdaFunctionArnPrefix}-match-status
+    REAL_DATING_SWIPED_RIGHT_USERS_ARN: ${self:custom.realDating.lambdaFunctionArnPrefix}-swiped-right-users
+    REAL_DATING_GET_USER_MATCHES_COUNT_ARN: ${self:custom.realDating.lambdaFunctionArnPrefix}-get-user-matches-count
+
+    USER_NOTIFICATIONS_ENABLED: ${env:USER_NOTIFICATIONS_ENABLED, 'true'}
+    USER_NOTIFICATIONS_ONLY_USERNAMES: ${env:USER_NOTIFICATIONS_ONLY_USERNAMES, ''}  # space-seperated list
+
+    # Note: use of cloudformation variables with 'placeholder' is to avoid resource dependency loops
+    CLOUDFRONT_FRONTEND_RESOURCES_DOMAIN: ${cf:real-production-themes.CloudFrontThemesDomainName, 'placeholder'}
+    CLOUDFRONT_UPLOADS_DOMAIN: ${cf:real-${self:provider.stage}-cloudfront.CloudFrontUploadsDomainName, 'placeholder'}
+
+    COGNITO_USER_POOL_ID: ${cf:${self:provider.stackName}.CognitoUserPoolId, 'placeholder'}
+    COGNITO_USER_POOL_BACKEND_CLIENT_ID: ${cf:${self:provider.stackName}.CognitoBackendUserPoolClientId, 'placeholder'}
+    COGNITO_USER_POOL_TESTING_CLIENT_ID: ${cf:${self:provider.stackName}.CognitoTestingUserPoolClientId, 'placeholder'}
+
+    S3_PLACEHOLDER_PHOTOS_BUCKET: real-production-themes-#{AWS::AccountId}  # real-themes doesn't use different stages
+    S3_PLACEHOLDER_PHOTOS_DIRECTORY: 'placeholder-photos'
+    S3_UPLOADS_BUCKET: ${self:provider.stackName}-uploadsbucket-#{AWS::AccountId}
+    S3_BAD_WORDS_BUCKET: ${self:provider.profile}-bad-words-#{AWS::AccountId}
+
+    SECRETSMANAGER_APPLE_APPSTORE_PARAMS_NAME: AppleAppstoreParams-1
+    SECRETSMANAGER_CLOUDFRONT_KEY_PAIR_NAME: CloudFrontKeyPair-1
+    SECRETSMANAGER_POST_VERIFICATION_API_CREDS_NAME: PostVerificationAPICreds-${self:provider.stage}-1
+    SECRETSMANAGER_GOOGLE_CLIENT_IDS_NAME: GoogleClientIds-1
+    SECRETSMANAGER_REAL_KEY_PAIR_NAME: RealKeyPair-1
+
+    AMPLITUDE_API_KEY: ${env:AMPLITUDE_API_KEY, ''}
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - cognito-idp:*
+      Resource: arn:aws:cognito-idp:*:*:*
+    - Effect: Allow
+      Action:
+        - cognito-identity:DeleteIdentities
+      Resource: arn:aws:cognito-identity:*:*:*
+    - Effect: Allow
+      Action:
+        - dynamodb:*
+      Resource:
+        - !GetAtt DynamoDbTable.Arn
+        - !Join [ /, [ !GetAtt DynamoDbTable.Arn, index, '*' ] ]
+        - !GetAtt FeedTable.Arn
+        - !Join [ /, [ !GetAtt FeedTable.Arn, index, '*' ] ]
+    - Effect: Allow
+      Action:
+        - secretsmanager:GetSecretValue
+      Resource: arn:aws:secretsmanager:*:*:*
+    - Effect: Allow
+      Action:
+        - s3:*
+      Resource:
+        - !Join [ '', [ 'arn:aws:s3:::', '${self:provider.environment.S3_UPLOADS_BUCKET}' ] ]  # needed for 404's to work (via s3:ListBucket)
+        - !Join [ '', [ 'arn:aws:s3:::', '${self:provider.environment.S3_UPLOADS_BUCKET}', '/*' ] ]
+    - Effect: Allow
+      Action:
+        - es:ESHttp*
+      Resource: !Join [ '', [ !GetAtt ElasticSearchDomain.DomainArn, '/*' ] ]
+    - Effect: Allow
+      Action:
+        - s3:ListBucket
+      Resource: !Join [ '', [ 'arn:aws:s3:::', '${self:provider.environment.S3_PLACEHOLDER_PHOTOS_BUCKET}' ] ]
+    - Effect: Allow
+      Action:
+        - s3:*
+      Resource:
+        - !Join [ '', [ 'arn:aws:s3:::', '${self:provider.environment.S3_BAD_WORDS_BUCKET}' ] ]  # needed for 404's to work (via s3:ListBucket)
+        - !Join [ '', [ 'arn:aws:s3:::', '${self:provider.environment.S3_BAD_WORDS_BUCKET}', '/*' ] ]
+    - Effect: Allow
+      Action:
+        - mediaconvert:CreateJob
+        - mediaconvert:DescribeEndpoints
+      Resource: arn:aws:mediaconvert:*:*:*
+    - Effect: Allow
+      Action:
+        - iam:GetRole
+        - iam:PassRole
+      Resource: !GetAtt MediaCovertRole.Arn
+    - Effect: Allow
+      Action:
+        - appsync:GraphQL
+      Resource: '#{GraphQlApi.Arn}/types/Mutation/fields/trigger*'
+    # Allows for running data migrations with this role from lambda
+    - Effect: Allow
+      Action:
+        - logs:CreateLogGroup
+      Resource: '*'
+    - Effect: Allow
+      Action:
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+      Resource: !Join [ ':', [ 'arn:aws:logs', '#{AWS::Region}', '#{AWS::AccountId}', 'log-group', '/aws/lambda/*' ] ]
+    - Effect: Allow
+      Action: mobiletargeting:*
+      Resource: !Join [ /, [ !GetAtt PinpointApp.Arn, '*' ] ]
+    - Effect: Allow
+      Action: lambda:InvokeFunction
+      Resource:
+        - ${self:provider.environment.REAL_DATING_PUT_USER_ARN}
+        - ${self:provider.environment.REAL_DATING_REMOVE_USER_ARN}
+        - ${self:provider.environment.REAL_DATING_MATCH_STATUS_ARN}
+        - ${self:provider.environment.REAL_DATING_SWIPED_RIGHT_USERS_ARN}
+        - ${self:provider.environment.REAL_DATING_GET_USER_MATCHES_COUNT_ARN}
+
+custom:
+  elasticSearchInstanceCount:
+    default: 2
+    dev: 1
+
+  realDating:
+    stackName: real-${self:provider.stage}-dating
+    lambdaFunctionArnPrefix: 'arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:custom.realDating.stackName}'
+
+  sesSender:
+    defaultAddress: 'no-reply@real.app'
+    address: ${env:SES_SENDER_ADDRESS, self:custom.sesSender.defaultAddress}
+    arn: arn:aws:ses:us-east-1:#{AWS::AccountId}:identity/${self:custom.sesSender.address}
+
+  splitStacks:
+    perType: false
+
+  appSync:
+    name: ${self:service}-${self:provider.stage}
+    authenticationType: AWS_IAM
+    caching:
+      behavior: PER_RESOLVER_CACHING
+    logConfig:
+      level: ERROR
+    substitutions:
+      dynamoTable: ${self:provider.environment.DYNAMO_TABLE}
+      realUserId: ${self:provider.environment.REAL_USER_ID}
+    xrayEnabled: true
+
+    mappingTemplates:
+      - ${file(./serverless/mapping-templates/album.yml)}
+      - ${file(./serverless/mapping-templates/card.yml)}
+      - ${file(./serverless/mapping-templates/chat.yml)}
+      - ${file(./serverless/mapping-templates/chat-message.yml)}
+      - ${file(./serverless/mapping-templates/comment.yml)}
+      - ${file(./serverless/mapping-templates/mutation.yml)}
+      - ${file(./serverless/mapping-templates/post.yml)}
+      - ${file(./serverless/mapping-templates/query.yml)}
+      - ${file(./serverless/mapping-templates/subscription.yml)}
+      - ${file(./serverless/mapping-templates/user.yml)}
+      - ${file(./serverless/mapping-templates/found-contact.yml)}
+
+      - type: PaginatedChatMessages
+        field: items
+        request: PaginatedChatMessages.items/before.request.vtl
+        response: PassThru.response.vtl
+        kind: PIPELINE
+        functions:
+          - ChatMessages.batchGet
+          - PaginatedChatMessages.items.beginUserPipeline
+          - Users.batchGet
+          - Users.batchGet.blockerStatus
+          - Users.filterBy.blockerStatus
+          - Users.batchGet.followedStatus
+          - PaginatedChatMessages.items.endUserPipeline
+
+      - type: PaginatedChats
+        field: items
+        request: PaginatedChats.items/before.request.vtl
+        response: PassThru.response.vtl
+        kind: PIPELINE
+        functions:
+          - Chats.batchGet
+
+      - type: PaginatedComments
+        field: items
+        request: PaginatedComments.items/before.request.vtl
+        response: PassThru.response.vtl
+        kind: PIPELINE
+        functions:
+          - Comments.batchGet
+          - Users.beginPipeline
+          - Users.batchGet
+          - Users.batchGet.blockerStatus
+          - Users.filterBy.blockerStatus
+          - Users.batchGet.followedStatus
+          - Users.endPipeline
+
+      - type: PaginatedPosts
+        field: items
+        request: PaginatedPosts.items/before.request.vtl
+        response: PaginatedPosts.items/after.response.vtl  # temp copy of Users.endPipeline
+        kind: PIPELINE
+        functions:
+          - Posts.batchGet
+          - Posts.filterBy.postStatus
+          - PaginatedPosts.items.applyFilters
+          - Users.beginPipeline
+          - Users.batchGet
+          - Users.batchGet.blockerStatus
+          - Users.filterBy.blockerStatus
+          - Users.batchGet.followedStatus
+          - Users.filterBy.followedStatus
+
+      - type: PaginatedUsers
+        field: items
+        request: PaginatedUsers.items/before.request.vtl
+        response: PassThru.response.vtl
+        kind: PIPELINE
+        functions:
+          - Users.batchGet
+          - Users.batchGet.blockerStatus
+          - Users.filterBy.blockerStatus
+          - Users.batchGet.followedStatus
+
+    functionConfigurations:
+
+      - dataSource: DynamodbDataSource
+        name: Users.batchGet
+
+      - dataSource: DynamodbDataSource
+        name: Users.batchGet.blockerStatus
+
+      - dataSource: NoneDataSource
+        name: Users.filterBy.blockerStatus
+        response: PassThru.response.vtl
+
+      - dataSource: DynamodbDataSource
+        name: Users.batchGet.followedStatus
+
+      - dataSource: NoneDataSource
+        name: Users.filterBy.followedStatus
+        response: PassThru.response.vtl
+
+      - dataSource: NoneDataSource
+        name: Users.beginPipeline
+        response: PassThru.response.vtl
+
+      - dataSource: NoneDataSource
+        name: Users.endPipeline
+        response: PassThru.response.vtl
+
+      - dataSource: DynamodbDataSource
+        name: Posts.batchGet
+
+      - dataSource: NoneDataSource
+        name: Posts.filterBy.postStatus
+        response: PassThru.response.vtl
+
+      - dataSource: DynamodbDataSource
+        name: PaginatedPosts.items.applyFilters
+        request: PaginatedPosts.items/applyFilters.request.vtl
+        response: PaginatedPosts.items/applyFilters.response.vtl
+
+      - dataSource: DynamodbDataSource
+        name: Albums.batchGet
+
+      - dataSource: DynamodbDataSource
+        name: Comments.batchGet
+
+      - dataSource: DynamodbDataSource
+        name: Chats.batchGet
+
+      - dataSource: DynamodbDataSource
+        name: ChatMemberships.batchGet
+
+      - dataSource: DynamodbDataSource
+        name: ChatMessages.batchGet
+
+      - dataSource: NoneDataSource
+        name: Query.chat.transform
+        request: Query.chat/transform.request.vtl
+        response: PassThru.response.vtl
+
+      - dataSource: NoneDataSource
+        name: PaginatedChatMessages.items.beginUserPipeline
+        request: PaginatedChatMessages.items/beginUserPipeline.request.vtl
+        response: PassThru.response.vtl
+
+      - dataSource: NoneDataSource
+        name: PaginatedChatMessages.items.endUserPipeline
+        request: PaginatedChatMessages.items/endUserPipeline.request.vtl
+        response: PassThru.response.vtl
+
+    dataSources:
+
+      - type: NONE
+        name: NoneDataSource
+
+      - type: AMAZON_DYNAMODB
+        name: DynamodbDataSource
+        config:
+          tableName: ${self:provider.environment.DYNAMO_TABLE}
+
+      - type: AMAZON_DYNAMODB
+        name: DynamodbFeedDataSource
+        config:
+          tableName: ${self:provider.environment.DYNAMO_FEED_TABLE}
+
+      - type: AMAZON_DYNAMODB
+        name: DynamodbMatchesDataSource
+        config:
+          tableName: ${self:provider.environment.DYNAMO_MATCHES_TABLE}
+
+      - type: AWS_LAMBDA
+        name: LambdaDataSource
+        config:
+          functionName: appSyncDispatch
+
+      - type: AWS_LAMBDA
+        name: RejectMatchLambdaDataSource
+        config:
+          lambdaFunctionArn: ${self:custom.realDating.lambdaFunctionArnPrefix}-reject-match
+
+      - type: AWS_LAMBDA
+        name: ApproveMatchLambdaDataSource
+        config:
+          lambdaFunctionArn: ${self:custom.realDating.lambdaFunctionArnPrefix}-approve-match
+
+      - type: AMAZON_ELASTICSEARCH
+        name: ElasticSearchDataSource
+        config:
+          domain: ElasticSearchDomain
+
+  # https://github.com/ACloudGuru/serverless-plugin-aws-alerts
+  alerts:
+    stages:
+      - production
+      - staging
+      - dev  # for now
+    dashboards: true
+    topics:
+      alarm:
+        topic: ${self:service}-${self:provider.stage}-alerts-alarm
+    definitions:
+      functionUsersForceDisabled:
+        metric: usersForceDisabled
+        threshold: 1
+        statistic: Sum
+        period: 60
+        evaluationPeriods: 1
+        datapointsToAlarm: 1
+        comparisonOperator: GreaterThanOrEqualToThreshold
+        treatMissingData: missing
+        pattern: 'USER_FORCE_DISABLED'
+      functionCognitoServerErrors:
+        metric: cognitoServerErrors
+        threshold: 1
+        statistic: Sum
+        period: 60
+        evaluationPeriods: 1
+        datapointsToAlarm: 1
+        comparisonOperator: GreaterThanOrEqualToThreshold
+        treatMissingData: missing
+        pattern: 'ERROR - CognitoClientException'
+      functionLoggedErrors:
+        metric: loggedErrors
+        threshold: 1
+        statistic: Sum
+        period: 60
+        evaluationPeriods: 1
+        datapointsToAlarm: 1
+        comparisonOperator: GreaterThanOrEqualToThreshold
+        treatMissingData: missing
+        pattern: 'ERROR'
+
+resources:
+  - ${file(./serverless/resources/appsync.yml)}
+  - ${file(./serverless/resources/cloud-watch.yml)}
+  - ${file(./serverless/resources/cognito.yml)}
+  - ${file(./serverless/resources/dynamo.yml)}
+  - ${file(./serverless/resources/elastic-search.yml)}
+  - ${file(./serverless/resources/git.yml)}
+  - ${file(./serverless/resources/media-convert.yml)}
+  - ${file(./serverless/resources/pinpoint.yml)}
+  - ${file(./serverless/resources/s3.yml)}
+
+functions:
+
+  appSyncDispatch:
+    name: ${self:provider.stackName}-appSyncDispatch
+    handler: app.handlers.appsync.dispatch
+    timeout: 10
+    tracing: PassThrough  # already initiated by appsync
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  cronGarbageCollectAlbums:
+    name: ${self:provider.stackName}-cronGarbageCollectAlbums
+    handler: app.handlers.cron.garbage_collect_albums
+    timeout: 900
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - schedule: 'rate(1 hour)'
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  s3ImagePostUploaded:
+    name: ${self:provider.stackName}-s3ImagePostUploaded
+    handler: app.handlers.s3.image_post_uploaded
+    memorySize: 3008
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - s3:
+          bucket: uploads  # translated to 'S3BucketUploads' by serverless
+          event: s3:ObjectCreated:Put
+          rules:
+            - suffix: /native.jpg
+      - s3:
+          bucket: uploads  # translated to 'S3BucketUploads' by serverless
+          event: s3:ObjectCreated:Put
+          rules:
+            - suffix: /native.heic
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  s3VideoPostUploaded:
+    name: ${self:provider.stackName}-s3VideoPostUploaded
+    handler: app.handlers.s3.video_post_uploaded
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - s3:
+          bucket: uploads  # translated to 'S3BucketUploads' by serverless
+          event: s3:ObjectCreated:Put
+          rules:
+            - suffix: /video-original.mov
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  s3VideoPostProcessed:
+    name: ${self:provider.stackName}-s3VideoPostProcessed
+    handler: app.handlers.s3.video_post_processed
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - s3:
+          bucket: uploads  # translated to 'S3BucketUploads' by serverless
+          event: s3:ObjectCreated:Put
+          rules:
+            - suffix: /video-hls/video.m3u8
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  sendUserNotifications:
+    name: ${self:provider.stackName}-sendUserNotifications
+    handler: app.handlers.cron.send_user_notifications
+    timeout: 900
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - schedule: 'rate(1 minute)'
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  updateUserAges:
+    name: ${self:provider.stackName}-updateUserAges
+    handler: app.handlers.cron.update_user_ages
+    timeout: 900
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - schedule: 'rate(12 hours)'
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  updateAppStoreSubscriptions:
+    name: ${self:provider.stackName}-updateAppStoreSubscriptions
+    handler: app.handlers.cron.update_appstore_subscriptions
+    timeout: 900
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - schedule: 'rate(1 hour)'
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  clearExpiredUserSubscriptions:
+    name: ${self:provider.stackName}-clearExpiredUserSubscriptions
+    handler: app.handlers.cron.clear_expired_user_subscriptions
+    timeout: 900
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - schedule: 'rate(1 day)'
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  deflateTrendingUsers:
+    name: ${self:provider.stackName}-deflateTrendingUsers
+    handler: app.handlers.cron.deflate_trending_users
+    timeout: 900
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - schedule: 'cron(7 0 * * ? *)'
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  deflateTrendingPosts:
+    name: ${self:provider.stackName}-deflateTrendingPosts
+    handler: app.handlers.cron.deflate_trending_posts
+    timeout: 900
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - schedule: 'cron(7 0 * * ? *)'
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  deleteRecentlyExpiredPosts:
+    name: ${self:provider.stackName}-deleteRecentlyExpiredPosts
+    handler: app.handlers.cron.delete_recently_expired_posts
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - schedule: rate(1 minute)
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  deleteOlderExpiredPosts:
+    name: ${self:provider.stackName}-deleteOlderExpiredPosts
+    handler: app.handlers.cron.delete_older_expired_posts
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - schedule: rate(1 day)
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  cognitoPreSignUp:
+    name: ${self:provider.stackName}-cognitoPreSignUp
+    handler: app.handlers.cognito.pre_sign_up
+    events:
+      - cognitoUserPool:
+          pool: '-' # translated to `CognitoUserPool` by serveless
+          trigger: PreSignUp
+    alarms:
+      - functionCognitoServerErrors
+      - functionThrottles
+
+  cognitoPreAuth:
+    name: ${self:provider.stackName}-cognitoPreAuth
+    handler: app.handlers.cognito.pre_auth
+    events:
+      - cognitoUserPool:
+          pool: '-' # translated to `CognitoUserPool` by serveless
+          trigger: PreAuthentication
+    alarms:
+      - functionCognitoServerErrors
+      - functionThrottles
+
+  cognitoDefineAuthChallenge:
+    name: ${self:provider.stackName}-cognitoDefineAuthChallenge
+    handler: app.handlers.cognito.define_auth_challenge
+    events:
+      - cognitoUserPool:
+          pool: '-' # translated to `CognitoUserPool` by serveless
+          trigger: DefineAuthChallenge
+    alarms:
+      - functionCognitoServerErrors
+      - functionThrottles
+
+  cognitoCustomMessage:
+    name: ${self:provider.stackName}-cognitoCustomMessage
+    handler: app.handlers.cognito.custom_message
+    events:
+      - cognitoUserPool:
+          pool: '-' # translated to `CognitoUserPool` by serveless
+          trigger: CustomMessage
+    alarms:
+      - functionCognitoServerErrors
+      - functionThrottles
+
+  dynamoStream:
+    name: ${self:provider.stackName}-dynamoStream
+    handler: app.handlers.dynamo.handlers.process_records
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - stream:
+          type: dynamodb
+          arn: !GetAtt DynamoDbTable.StreamArn
+    alarms:
+      - functionErrors
+      - functionLoggedErrors
+      - functionThrottles
+      - functionUsersForceDisabled
+
+  createDatingChat:
+    name: ${self:provider.stackName}-create-dating-chat
+    handler: app.handlers.api.create_dating_chat
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  autoDisableDating:
+    name: ${self:provider.stackName}-autoDisableDating
+    handler: app.handlers.cron.auto_disable_dating
+    timeout: 900
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - schedule: 'rate(1 day)'
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  detectBadWords:
+    name: ${self:provider.stackName}-detectBadWords
+    handler: app.handlers.cron.detect_bad_words
+    timeout: 900
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - s3:
+          bucket: ${self:provider.environment.S3_BAD_WORDS_BUCKET}
+          event: s3:ObjectCreated:*
+          rules:
+            - suffix: /bad_words.json
+          existing: true
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  sendDatingMatchesNotification:
+    name: ${self:provider.stackName}-sendDatingMatchesNotification
+    handler: app.handlers.cron.send_dating_matches_notification
+    timeout: 900
+    layers:
+      - ${cf:real-${self:provider.stage}-lambda-layers.PythonRequirementsLambdaLayer}
+    events:
+      - schedule: 'rate(1 day)'
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+# keep this miminal for smaller packages and thus faster deployments
+package:
+  exclude:
+    - ./**
+  include:
+    - app/**/*.py
+    - mapping-templates/**
+    - fonts/*.ttf
+    - requirements.txt
+    - schema.graphql
+
+plugins:
+  - serverless-dotenv-plugin
+  - serverless-appsync-plugin
+  - serverless-pseudo-parameters
+  - serverless-plugin-aws-alerts
+  - serverless-plugin-split-stacks
+  - serverless-plugin-git-variables

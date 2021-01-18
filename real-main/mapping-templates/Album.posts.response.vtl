@@ -1,0 +1,14 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+
+#set ($postIds = [])
+#foreach ($item in $ctx.result.items)
+  #set ($postId = $item.partitionKey.substring(5))
+  $util.qr($postIds.add($postId))
+#end
+
+$util.toJson({
+  'nextToken': $ctx.result.nextToken,
+  'items': $postIds
+})

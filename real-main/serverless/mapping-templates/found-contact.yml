@@ -1,0 +1,9 @@
+- type: FoundContact
+  field: user
+  request: FoundContact.user/before.request.vtl
+  response: FoundContact.user/after.response.vtl
+  kind: PIPELINE
+  functions:
+    - Users.batchGet
+    - Users.batchGet.blockerStatus
+    - Users.batchGet.followedStatus

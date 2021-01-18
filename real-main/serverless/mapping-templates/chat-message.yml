@@ -1,0 +1,31 @@
+- type: ChatMessage
+  field: authorUserId
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: ChatMessage
+  field: chat
+  request: ChatMessage.chat/before.request.vtl
+  response: ChatMessage.chat/after.response.vtl
+  kind: PIPELINE
+  functions:
+    - Chats.batchGet
+
+- type: ChatMessage
+  field: textTaggedUsers
+  request: Source.textTaggedUsers/before.request.vtl
+  response: Source.textTaggedUsers/after.response.vtl
+  kind: PIPELINE
+  functions:
+    - Users.batchGet
+    - Users.batchGet.blockerStatus
+    - Users.filterBy.blockerStatus
+    - Users.batchGet.followedStatus
+
+- type: ChatMessage
+  field: viewedStatus
+  dataSource: DynamodbDataSource
+
+- type: ChatMessage
+  field: flagStatus
+  dataSource: DynamodbDataSource

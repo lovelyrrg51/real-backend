@@ -1,0 +1,12 @@
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#set ($targetUserId = $ctx.source.userId)
+
+## private to user themselves
+#if ($callerUserId != $targetUserId)
+  #return
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.defaultIfNull($ctx.source.chatsWithUnviewedMessagesCount, 0)
+}

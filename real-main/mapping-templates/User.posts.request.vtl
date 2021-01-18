@@ -1,0 +1,56 @@
+#if ($ctx.args.limit < 1 or $ctx.args.limit > 100)
+  $util.error('ClientError: Limit cannot be less than 1 or greater than 100', 'ClientError')
+#end
+#set ($limit = $util.defaultIfNull($ctx.args.limit, 20))
+
+#set ($user = $ctx.source)
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#set ($postStatus = $util.defaultIfNull($ctx.args.postStatus, 'COMPLETED'))
+
+## we are only allowed to request COMPLETED posts of others
+#if ($user.userId != $callerUserId and $postStatus != 'COMPLETED')
+  $util.error('ClientError: May only retrieve COMPLETED posts of other users', 'ClientError')
+#end
+
+## Hide if target is blocking caller
+#if ($user.blockerStatus == 'BLOCKING')
+  #return
+#end
+
+## if the target user is private, and caller is not a follower, then hide
+#if ($user.privacyStatus == 'PRIVATE')
+  #if ($user.followedStatus != 'SELF' and $user.followedStatus != 'FOLLOWING')
+    #return
+  #end
+#end
+
+## filter on postType if requested
+#if (! $util.isNull($ctx.args.postType))
+  #set ($filter = {
+    "expression": "postType = :pt",
+    "expressionValues": {
+      ":pt": { "S": "$ctx.args.postType" }
+    }
+  })
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "Query",
+  "query": {
+    "expression": "gsiA2PartitionKey = :pk and begins_with(gsiA2SortKey, :skPrefix)",
+    "expressionValues": {
+      ":pk": { "S": "post/$user.userId" },
+      ":skPrefix": { "S": "$postStatus/" }
+    }
+  },
+  "index": "GSI-A2",
+  "scanIndexForward": false,
+  "limit": $limit
+  #if ($ctx.args.nextToken)
+  , "nextToken": "$ctx.args.nextToken"
+  #end
+  #if ($filter)
+  ,  "filter": $util.toJson($filter)
+  #end
+}

@@ -1,0 +1,16 @@
+#set ($viewedStatus = $ctx.args.viewedStatus)
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#set ($totalMsgCnt = $util.defaultIfNull($ctx.source.messagesCount, 0))
+
+#if ($util.isNull($viewedStatus))
+  #return ($totalMsgCnt)
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "GetItem",
+  "key": {
+    "partitionKey": { "S": "chat/$ctx.source.chatId" },
+    "sortKey": { "S": "member/$callerUserId" }
+  }
+}

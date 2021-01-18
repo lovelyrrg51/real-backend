@@ -1,0 +1,18 @@
+## build a map from userId to user object
+#set ($userIdToUser = {})
+#foreach ($user in $ctx.prev.result)
+  $util.qr($userIdToUser.put($user.userId, $user))
+#end
+
+## fill in the author attribute for users we pulled from the DB
+## Users we did not pull from the DB could represent deleted or blocked users
+#foreach ($message in $ctx.stash.messages)
+  #if ($userIdToUser.containsKey($message.userId))
+    $util.qr($message.put('author', $userIdToUser[$message.userId]))
+  #end
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($ctx.stash.messages)
+}

@@ -1,0 +1,34 @@
+## Expects $ctx.prev.result to be a list of objects which may be:
+##  - a albumId string
+##  - a album object (which will flow through this resolver without change)
+
+## BatchGetItem can't handle duplicates
+#set ($ctx.stash.albumIdToIndex = {})
+#set ($keys = [])
+
+#foreach ($item in $ctx.prev.result)
+  #if ($util.isString($item))
+    #set ($albumId = $item)
+    #if (! $ctx.stash.albumIdToIndex.containsKey($albumId))
+      $util.qr($ctx.stash.albumIdToIndex.put($albumId, $keys.size()))
+      $util.qr($keys.add({
+        'partitionKey': {'S': "album/$albumId"},
+        'sortKey': {'S': '-'}
+      }))
+    #end
+  #end
+#end
+
+#if ($keys.isEmpty())
+  #return ($ctx.prev.result)
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "BatchGetItem",
+  "tables": {
+    "${dynamoTable}": {
+      "keys": $util.toJson($keys)
+    }
+  }
+}

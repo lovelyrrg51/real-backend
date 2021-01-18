@@ -1,0 +1,30 @@
+#if ($ctx.args.limit < 1 or $ctx.args.limit > 100)
+  $util.error('ClientError: Limit cannot be less than 1 or greater than 100', 'ClientError')
+#end
+#set ($limit = $util.defaultIfNull($ctx.args.limit, 20))
+
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#set ($targetUserId = $ctx.source.userId)
+
+## private to user themselves
+#if ($callerUserId != $targetUserId)
+  #return
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "Query",
+  "query": {
+    "expression": "gsiK2PartitionKey = :pk AND begins_with(gsiK2SortKey, :skPrefix)",
+    "expressionValues": {
+      ":pk": { "S": "member/$targetUserId" },
+      ":skPrefix": { "S": "chat/" }
+    }
+  },
+  "index": "GSI-K2",
+  "limit": $limit,
+  "scanIndexForward": false,
+  #if ($ctx.args.nextToken)
+    , "nextToken": "$ctx.args.nextToken"
+  #end
+}

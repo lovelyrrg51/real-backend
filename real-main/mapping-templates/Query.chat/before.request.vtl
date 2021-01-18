@@ -1,0 +1,2 @@
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+$util.toJson([[$ctx.args.chatId, $callerUserId]])

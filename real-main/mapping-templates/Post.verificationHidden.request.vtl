@@ -1,0 +1,9 @@
+## only visible to the owner of the post
+#if ($ctx.source.postedByUserId == $ctx.identity.cognitoIdentityId)
+  #set ($payload = $util.defaultIfNull($ctx.source.verificationHidden, false))
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($payload)
+}

@@ -1,0 +1,35 @@
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+
+## BatchGetItem can't handle duplicates
+#set ($ctx.stash.userIdToIndex = {})
+#set ($keys = [])
+
+#foreach ($user in $ctx.prev.result)
+  #if ($util.isNull($user.followedStatus))
+    #if ($user.userId == $callerUserId)
+      $util.qr($user.put('followedStatus', 'SELF'))
+    #else
+      #if (! $ctx.stash.userIdToIndex.containsKey($user.userId))
+        $util.qr($ctx.stash.userIdToIndex.put($user.userId, $keys.size()))
+        $util.qr($keys.add({
+          'partitionKey': {'S': "user/$user.userId"},
+          'sortKey': {'S': "follower/$callerUserId"}
+        }))
+      #end
+    #end
+  #end
+#end
+
+#if ($keys.isEmpty())
+  #return ($ctx.prev.result)
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "BatchGetItem",
+  "tables": {
+    "${dynamoTable}": {
+      "keys": $util.toJson($keys)
+    }
+  }
+}

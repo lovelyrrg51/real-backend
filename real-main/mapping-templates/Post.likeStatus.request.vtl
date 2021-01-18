@@ -1,0 +1,15 @@
+#if (! $util.isNull($ctx.source.likeStatus))
+  #return ($ctx.source.likeStatus)
+#end
+
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#set ($targetPostId = $ctx.source.postId)
+
+{
+  "version": "2018-05-29",
+  "operation": "GetItem",
+  "key": {
+    "partitionKey": { "S": "post/$targetPostId" },
+    "sortKey": { "S": "like/$callerUserId" }
+  }
+}

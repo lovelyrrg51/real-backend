@@ -1,0 +1,9 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+
+#foreach ($album in $ctx.result.items)
+  $util.qr($album.put('ownedBy', $ctx.source))
+#end
+
+$util.toJson($ctx.result)

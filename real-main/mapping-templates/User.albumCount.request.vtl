@@ -1,0 +1,22 @@
+#set ($count = $util.defaultIfNull($ctx.source.albumCount, 0))
+
+#set ($targetUser = $ctx.source)
+
+## hide if albums if target user is blocking caller
+## parent resolver guaranteed to have filled in blockerStatus
+#if ($targetUser.blockerStatus == 'BLOCKING')
+  #return
+#end
+
+## hide albums if target user is private and caller is not a follower or self
+## parent resolver guaranteed to have filled in followedStatus
+#if ($targetUser.privacyStatus == 'PRIVATE')
+  #if ($targetUser.followedStatus != 'SELF' and $targetUser.followedStatus != 'FOLLOWING')
+    #return
+  #end
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $count,
+}

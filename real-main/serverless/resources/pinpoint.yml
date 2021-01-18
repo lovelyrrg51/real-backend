@@ -1,0 +1,51 @@
+Resources:
+
+  PinpointApp:
+    Type: AWS::Pinpoint::App
+    Properties:
+      Name: REAL-${self:provider.stage}
+
+  PinpointEmailChannel:
+    Type: AWS::Pinpoint::EmailChannel
+    Properties:
+      ApplicationId: !Ref PinpointApp
+      Enabled: True
+      FromAddress: ${self:custom.sesSender.address}
+      Identity: ${self:custom.sesSender.arn}
+      RoleArn: !GetAtt PinpointSubmitEventsRole.Arn
+
+  PinpointSMSChannel:
+    Type: AWS::Pinpoint::SMSChannel
+    Properties:
+      ApplicationId: !Ref PinpointApp
+      Enabled: True
+
+  # IAM role used by pinpoint to submit email open/click data to... pinpoint
+  PinpointSubmitEventsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - pinpoint.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: PinpointSubmitEvents
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - mobileanalytics:PutEvents
+                  - mobileanalytics:PutItems
+                Resource:
+                  - '*'
+
+Outputs:
+  
+  PinpointApplicationId:
+    Value: !Ref PinpointApp

@@ -1,0 +1,408 @@
+- type: Mutation
+  field: createAnonymousUser
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: createCognitoOnlyUser
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: createAppleUser
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: createFacebookUser
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: createGoogleUser
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: setUserPassword
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: linkAppleLogin
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: linkFacebookLogin
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: linkGoogleLogin
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: startChangeUserEmail
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: finishChangeUserEmail
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: startChangeUserPhoneNumber
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: finishChangeUserPhoneNumber
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: resetUser
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: disableUser
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: deleteUser
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: grantUserSubscriptionBonus
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: addAppStoreReceipt
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: setUserDetails
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: setUserAcceptedEULAVersion
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: setUserAPNSToken
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: setUserDatingStatus
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: followUser
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: unfollowUser
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: acceptFollowerUser
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: denyFollowerUser
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: blockUser
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: unblockUser
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: onymouslyLikePost
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: anonymouslyLikePost
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: dislikePost
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: addComment
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: deleteComment
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: flagComment
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: deleteCard
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: addAlbum
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: editAlbum
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: deleteAlbum
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: addPost
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: editPost
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: editPostAlbum
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: editPostAlbumOrder
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: editPostExpiresAt
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: flagPost
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: deletePost
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: archivePost
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: restoreArchivedPost
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: reportPostViews
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: reportScreenViews
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: createDirectChat
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: createGroupChat
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: editGroupChat
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: addToGroupChat
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: leaveGroupChat
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: reportChatViews
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: flagChat
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: addChatMessage
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: editChatMessage
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: deleteChatMessage
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: flagChatMessage
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: rejectMatch
+  dataSource: RejectMatchLambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: approveMatch
+  dataSource: ApproveMatchLambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: lambdaClientError
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: lambdaServerError
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Mutation
+  field: dynamoServerError
+  dataSource: DynamodbDataSource
+  response: PassThru.response.vtl
+
+- type: Mutation
+  field: triggerNotification
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: Mutation
+  field: triggerCardNotification
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: Mutation
+  field: triggerChatMessageNotification
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: Mutation
+  field: triggerPostNotification
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl

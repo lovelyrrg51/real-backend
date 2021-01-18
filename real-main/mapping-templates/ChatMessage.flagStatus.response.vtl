@@ -1,0 +1,9 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+
+#if ($util.isNull($ctx.result))
+  #return ('NOT_FLAGGED')
+#else
+  #return ('FLAGGED')
+#end

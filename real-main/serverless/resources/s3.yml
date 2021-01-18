@@ -1,0 +1,74 @@
+Resources:
+
+  S3BucketUploads:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: ${self:provider.environment.S3_UPLOADS_BUCKET}
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  S3UploadsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: ${self:provider.environment.S3_UPLOADS_BUCKET}
+      PolicyDocument:
+        Statement:
+          - Action:
+              - 's3:GetObject'
+            Effect: Allow
+            Resource: !Join [ /, [ !GetAtt S3BucketUploads.Arn, '*' ] ]
+            Principal:
+              CanonicalUser: ${cf:real-${self:provider.stage}-cloudfront.CloudFrontUploadsS3CanonicalUserId}
+          - Action:
+              - 's3:PutObject'
+            Effect: Allow
+            Resource: !Join [ /, [ !GetAtt S3BucketUploads.Arn, '*' ] ]
+            Principal:
+              CanonicalUser: ${cf:real-${self:provider.stage}-cloudfront.CloudFrontUploadsS3CanonicalUserId}
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+
+  S3ImagePostUploadedLambdaPermissionUploadsS3:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt S3ImagePostUploadedLambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: '#{AWS::AccountId}'
+      SourceArn: 'arn:aws:s3:::${self:provider.environment.S3_UPLOADS_BUCKET}'
+
+  S3VideoPostUploadedLambdaPermissionUploadsS3:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt S3VideoPostUploadedLambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: '#{AWS::AccountId}'
+      SourceArn: 'arn:aws:s3:::${self:provider.environment.S3_UPLOADS_BUCKET}'
+
+  S3VideoPostProcessedLambdaPermissionUploadsS3:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt S3VideoPostProcessedLambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: '#{AWS::AccountId}'
+      SourceArn: 'arn:aws:s3:::${self:provider.environment.S3_UPLOADS_BUCKET}'
+
+Outputs:
+
+  UploadsBucket:
+    Value: ${self:provider.environment.S3_UPLOADS_BUCKET}
+
+  UploadsBucketDomainName:
+    Value: !GetAtt S3BucketUploads.DomainName

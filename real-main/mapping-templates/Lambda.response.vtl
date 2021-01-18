@@ -1,0 +1,23 @@
+#if ($ctx.error)
+  ## server error
+  $util.error("ServerError: $ctx.error.message", 'ServerError')
+#end
+
+## Similar to appsync's default lambda error processing.
+## https://docs.aws.amazon.com/appsync/latest/devguide/resolver-mapping-template-reference-lambda.html#direct-lambda-resolvers
+##
+## Allows us to return client errors from lambda handler to gql API client
+## without them being counted as an 'error' by CloudWatch default metrics.
+## CloudWatch 'errors' for lamdba handlers are thus only server errors, not client.
+##
+#if ($ctx.result.error)
+  ## client error
+  $util.error(
+    $ctx.result.error.message,
+    $ctx.result.error.type,
+    $ctx.result.data,
+    $ctx.result.error.info
+  )
+#end
+
+$util.toJson($ctx.result.data)

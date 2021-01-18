@@ -1,0 +1,15 @@
+## When used in a ChatMessageNotification, textTaggedUsers is already filled in
+#if (!$util.isNull($ctx.source.textTaggedUsers))
+  #return ($ctx.source.textTaggedUsers)
+#end
+
+#if ($util.isNull($ctx.source.textTags) or $ctx.source.textTags.isEmpty())
+  #return ([])
+#end
+
+#set ($userIds = [])
+#foreach ($textTag in $ctx.source.textTags)
+  $util.qr($userIds.add($textTag.userId))
+#end
+
+$util.toJson($userIds)

@@ -1,0 +1,11 @@
+Outputs:
+
+  # https://github.com/jacob-meacham/serverless-plugin-git-variables
+  GitBranch:
+    Value: ${git:branch}
+
+  GitDescribe:
+    Value: ${git:describeLight}
+
+  GitIsDirty:
+    Value: ${git:isDirty}

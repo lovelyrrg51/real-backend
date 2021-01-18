@@ -1,0 +1,25 @@
+## If caller is blocked by target, and this field is being resolved
+## then we can be guaranteed that parent resolver filled in blockerStatus
+#if ($ctx.source.blockerStatus == 'BLOCKING')
+  #return
+#end
+
+## if the target user is private, and caller is not a follower, then return null
+#if ($ctx.source.privacyStatus == 'PRIVATE')
+  #if ($ctx.source.followedStatus != 'SELF' and $ctx.source.followedStatus != 'FOLLOWING')
+    #return
+  #end
+#end
+
+## if followCountsHidden is set, and the caller is not looking at their
+## own profile, hide the count
+#if ($ctx.source.userId != $ctx.identity.cognitoIdentityId)
+  #if ($util.defaultIfNull($ctx.source.followCountsHidden, false))
+    #return
+  #end
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.defaultIfNull($ctx.source.followedCount, 0)
+}

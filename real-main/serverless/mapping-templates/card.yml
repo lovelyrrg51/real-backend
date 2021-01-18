@@ -1,0 +1,8 @@
+- type: Card
+  field: thumbnail
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+  caching:
+    keys:
+      - $context.source.postId

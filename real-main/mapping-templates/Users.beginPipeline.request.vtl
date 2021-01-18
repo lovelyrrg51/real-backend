@@ -1,0 +1,25 @@
+## requires $ctx.stash.userIdAttribute and $ctx.stash.userAttribute to be set
+#set ($userIdAttr = $ctx.stash.userIdAttribute)
+#set ($userAttr = $ctx.stash.userAttribute)
+#if (! $userIdAttr || ! $userAttr)
+  $util.error('$ctx.stash.userIdAttribute and $ctx.stash.userAttribute must be set', 'ServerError')
+#end
+
+## a mixed array of either user ids (strings) or user objects (maps)
+#set ($users = [])
+
+#foreach ($item in $ctx.prev.result)
+  #if (! $util.isNull($item[$userAttr]))
+    $util.qr($users.add($item[$userAttr]))
+  #else
+    $util.qr($users.add($item[$userIdAttr]))
+  #end
+#end
+
+## save for re-instatement at the end of the Users pipeline
+#set ($ctx.stash.items = $ctx.prev.result)
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($users)
+}

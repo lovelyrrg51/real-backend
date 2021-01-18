@@ -1,0 +1,19 @@
+#if (! $util.isNull($ctx.source.blockedStatus))
+  #return ($ctx.source.blockedStatus)
+#end
+
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#set ($targetUserId = $ctx.source.userId)
+
+#if ($callerUserId == $targetUserId)
+  #return ('SELF')
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "GetItem",
+  "key": {
+    "partitionKey": { "S": "user/$targetUserId" },
+    "sortKey": { "S": "blocker/$callerUserId" }
+  }
+}

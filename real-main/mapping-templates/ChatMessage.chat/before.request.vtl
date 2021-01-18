@@ -1,0 +1,6 @@
+## When used in a ChatMessageNotification, chat is already filled in
+#if (!$util.isNull($ctx.source.chat))
+  #return ($ctx.source.chat)
+#end
+
+$util.toJson([$ctx.source.chatId])

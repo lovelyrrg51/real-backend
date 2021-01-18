@@ -1,0 +1,31 @@
+#if ($ctx.args.limit < 1 or $ctx.args.limit > 100)
+  $util.error('ClientError: Limit cannot be less than 1 or greater than 100', 'ClientError')
+#end
+#set ($limit = $util.defaultIfNull($ctx.args.limit, 20))
+
+## private to the user themselves
+#if ($ctx.source.userId != $ctx.identity.cognitoIdentityId)
+  #return
+#end
+
+#set ($targetUserId = $ctx.identity.cognitoIdentityId)
+#set ($now = $util.time.nowEpochMilliSeconds())
+#set ($aDayAhead = $now + 86400000)
+#set ($skMax = $util.time.epochMilliSecondsToISO8601($aDayAhead))
+
+{
+  "version": "2018-05-29",
+  "operation": "Query",
+  "query": {
+    "expression": "gsiA2PartitionKey = :pk and gsiA2SortKey < :skMax",
+    "expressionValues": {
+      ":pk": { "S": "follower/$targetUserId/firstStory" },
+      ":skMax": { "S": "$skMax" }
+    }
+  },
+  "index": "GSI-A2",
+  "limit": $limit
+  #if ($ctx.args.nextToken)
+    , "nextToken": "$ctx.args.nextToken"
+  #end
+}

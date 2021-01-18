@@ -1,0 +1,42 @@
+## off limits to cognito-authenticated clients
+#if (! $util.isNull($ctx.identity.cognitoIdentityId))
+  $util.error('ClientError: Access denied', 'ClientError')
+#end
+
+#set ($input = $ctx.args.input)
+
+#set ($textTaggedUsers = [])
+#foreach ($item in $input.textTaggedUserIds)
+  $util.qr($textTaggedUsers.add({
+    'tag': $item.tag,
+    'user': {
+      'userId': $item.userId
+    }
+  }))
+#end
+
+## for users that have a blocking relationship authorUserId will be present
+## but authorEncoded will be null
+#if (! $util.isNull($input.authorEncoded))
+  #set ($author = $util.parseJson($input.authorEncoded))
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson({
+    'userId': $input.userId,
+    'type': $input.type,
+    'message': {
+      'messageId': $input.messageId,
+      'chat': {
+        'chatId': $input.chatId
+      },
+      'authorUserId': $input.authorUserId,
+      'author': $author,
+      'text': $input.text,
+      'textTaggedUsers': $textTaggedUsers,
+      'createdAt': $input.createdAt,
+      'lastEditedAt': $input.lastEditedAt
+    }
+  })
+}

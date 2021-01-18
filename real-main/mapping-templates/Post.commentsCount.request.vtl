@@ -1,0 +1,31 @@
+#if ($ctx.source.commentsDisabled)
+  #return
+#end
+
+#set ($viewedStatus = $ctx.args.viewedStatus)
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#set ($authorUserId = $ctx.source.postedByUserId)
+#set ($totalCnt = $util.defaultIfNull($ctx.source.commentCount, 0))
+#set ($unviewedCnt = $util.defaultIfNull($ctx.source.commentsUnviewedCount, 0))
+
+#if ($util.isNull($viewedStatus))
+  #return ($totalCnt)
+#end
+
+## Only post owner may specify a viewedStatus
+#if ($callerUserId != $authorUserId)
+  #return
+#end
+
+#if ($viewedStatus == 'VIEWED')
+  #set ($cnt = $totalCnt - $unviewedCnt)
+#elseif ($viewedStatus == 'NOT_VIEWED')
+  #set ($cnt = $unviewedCnt)
+#else
+  $util.error("Unrecognized ViewedStatus `$viewedStatus`", 'ServerError')
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($cnt)
+}

@@ -1,0 +1,16 @@
+## a mixed array of either user ids (strings) or user objects (maps)
+#set ($users = [])
+
+#foreach ($message in $ctx.prev.result)
+  #if (! $util.isNull($message.userId))
+    $util.qr($users.add($message.userId))
+  #end
+#end
+
+## save for re-instatement at the end of the Users pipeline
+#set ($ctx.stash.messages = $ctx.prev.result)
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($users)
+}

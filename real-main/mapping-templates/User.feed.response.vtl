@@ -1,0 +1,13 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+
+#set ($postIds = [])
+#foreach ($item in $ctx.result.items)
+  $util.qr($postIds.add($item.postId))
+#end
+
+$util.toJson({
+  'nextToken': $ctx.result.nextToken,
+  'items': $postIds
+})

@@ -1,0 +1,14 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+
+#set ($userIds = [])
+#foreach ($item in $ctx.result.items)
+  #set ($userId = $item.partitionKey.split('/')[1])
+  $util.qr($userIds.add($userId))
+#end
+
+$util.toJson({
+  'nextToken': $ctx.result.nextToken,
+  'items': $userIds
+})

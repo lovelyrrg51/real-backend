@@ -1,0 +1,25 @@
+Resources:
+
+  # IAM role for MediaConvert to use to transcode video
+  MediaCovertRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - mediaconvert.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        # full S3 and api gateway access are required to run media convert
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonAPIGatewayInvokeFullAccess
+
+Outputs:
+
+  # TODO: is this output needed?
+  MediaConvertRoleArn:
+    Value: !GetAtt MediaCovertRole.Arn

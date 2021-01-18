@@ -1,0 +1,14 @@
+## ChatMembership.batchGet passes in a list of ChatMemberships,
+## while Chat.batchGet expects a list of chatIds
+
+#set ($chatIds = [])
+#set ($prefix = "chat/")
+#foreach ($item in $ctx.prev.result)
+  #set ($chatId = $item.partitionKey.substring($prefix.length()))
+  $util.qr($chatIds.add($chatId))
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($chatIds)
+}

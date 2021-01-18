@@ -1,0 +1,44 @@
+#!/usr/bin/env node
+
+const AWS = require('aws-sdk')
+const dotenv = require('dotenv')
+const elasticsearch = require('elasticsearch')
+const httpAwsEs = require('http-aws-es')
+
+dotenv.config()
+AWS.config = new AWS.Config()  // https://github.com/TheDeveloper/http-aws-es/issues/74
+
+const endpoint = process.env.ELASTICSEARCH_ENDPOINT
+if (endpoint === undefined) throw new Error('Env var ELASTICSEARCH_ENDPOINT must be defined')
+
+
+const main = async () => {
+
+  const esClient = elasticsearch.Client({
+    hosts: [ 'https://' + endpoint ],
+    connectionClass: httpAwsEs,
+  })
+
+  let resp = await esClient.search({
+    index: 'users',
+    body: {
+      query: { match_all: { } },
+    },
+  })
+
+  const totalHits = resp.hits.total.value
+  console.log(`About to bulk delete ${totalHits} documents...`)
+
+  resp = await esClient.deleteByQuery({
+    index: 'users',
+    body: {
+      query: { match_all: { } },
+    },
+  })
+
+  const totalDeleted = resp.total
+  console.log(`Deleted ${totalDeleted} documents.`)
+
+}
+
+main()

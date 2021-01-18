@@ -1,0 +1,18 @@
+#set ($user = $ctx.source)
+
+## Hide if target is blocking caller
+#if ($user.blockerStatus == 'BLOCKING')
+  #return
+#end
+
+## if the target user is private, and caller is not a follower, then hide
+#if ($user.privacyStatus == 'PRIVATE')
+  #if ($user.followedStatus != 'SELF' and $user.followedStatus != 'FOLLOWING')
+    #return
+  #end
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($user.bio)
+}

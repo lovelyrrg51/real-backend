@@ -1,0 +1,20 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+
+## build a map from userId to user object
+#set ($userIdToUser = {})
+#foreach ($user in $ctx.prev.result)
+  $util.qr($userIdToUser.put($user.userId, $user))
+#end
+
+## missing users represent users who have blocked caller
+#set ($textTags = [])
+#foreach ($textTag in $ctx.source.textTags)
+  #if ($userIdToUser.containsKey($textTag.userId))
+    $util.qr($textTag.put('user', $userIdToUser[$textTag.userId]))
+    $util.qr($textTags.add($textTag))
+  #end
+#end
+
+$util.toJson($textTags)

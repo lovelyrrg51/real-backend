@@ -1,0 +1,20 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+
+## Note: trying to #set() a variable to a computed null value
+##       doesn't work. Avoid: #set($item = arrayWithNulls[$index])
+
+#foreach ($user in $ctx.prev.result)
+  #if ($util.isNull($user.followedStatus))
+    #set ($index = $ctx.stash.userIdToIndex[$user.userId])
+    #if ($util.isNull($ctx.result.data.${dynamoTable}[$index]))
+      $util.qr($user.put('followedStatus', 'NOT_FOLLOWING'))
+    #else
+      #set ($item = $ctx.result.data.${dynamoTable}[$index])
+      $util.qr($user.put('followedStatus', $item.followStatus))
+    #end
+  #end
+#end
+
+$util.toJson($ctx.prev.result)

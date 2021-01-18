@@ -1,0 +1,27 @@
+#if ($ctx.args.limit < 1 or $ctx.args.limit > 100)
+  $util.error('ClientError: Limit cannot be less than 1 or greater than 100', 'ClientError')
+#end
+#set ($limit = $util.defaultIfNull($ctx.args.limit, 20))
+
+#if ($ctx.source.commentsDisabled)
+  #return
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "Query",
+  "query": {
+    "expression": "gsiA1PartitionKey = :pk",
+    "expressionValues": {
+      ":pk": { "S": "comment/$ctx.source.postId" }
+    }
+  },
+  "index": "GSI-A1",
+  "limit": $limit
+  #if ($ctx.args.reverse)
+    , "scanIndexForward": false
+  #end
+  #if ($ctx.args.nextToken)
+    , "nextToken": "$ctx.args.nextToken"
+  #end
+}

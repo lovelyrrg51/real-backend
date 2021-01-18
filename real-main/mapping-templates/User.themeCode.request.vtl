@@ -1,0 +1,10 @@
+## If caller is blocked by target, and this field is being resolved
+## then we can be guaranteed that parent resolver filled in blockerStatus
+#if ($ctx.source.blockerStatus == 'BLOCKING')
+  #return
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": "$util.defaultIfNull($ctx.source.themeCode, 'black.green')"
+}

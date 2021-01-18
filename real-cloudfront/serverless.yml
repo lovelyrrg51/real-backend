@@ -1,0 +1,103 @@
+# Welcome to Serverless!
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+
+service: real-cloudfront
+frameworkVersion: '>=1.0.0 <2.0.0'
+
+provider:
+  name: aws
+  profile: real-${self:provider.stage}
+  stackName: real-${self:provider.stage}-cloudfront
+  stage: ${opt:stage, 'dev'}
+  runtime: python3.7
+  logRetentionInDays: 7
+
+resources:
+
+  Resources:
+
+    UploadsCloudFrontDistribution:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        DistributionConfig:
+          DefaultCacheBehavior:
+            AllowedMethods:
+              - DELETE
+              - GET
+              - HEAD
+              - OPTIONS
+              - PATCH
+              - POST
+              - PUT
+            Compress: true
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            TargetOriginId: UploadsCloudFrontDistributionOriginId
+            TrustedSigners:
+              - self
+            ViewerProtocolPolicy: https-only
+          DefaultRootObject: ''
+          Enabled: true
+          Origins:
+            - DomainName: ${cf:real-${self:provider.stage}-main.UploadsBucketDomainName}
+              Id: UploadsCloudFrontDistributionOriginId
+              S3OriginConfig:
+                OriginAccessIdentity: !Join [ /, [ origin-access-identity, cloudfront, Ref: UploadsCloudFrontOriginAccessIdentity ] ]
+
+    UploadsCloudFrontOriginAccessIdentity:
+      Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+      Properties:
+        CloudFrontOriginAccessIdentityConfig:
+          Comment: 'Origin Access Identity for Cloud Front formation of Uploads bucket'
+
+  Outputs:
+
+    CloudFrontUploadsDomainName:
+      Value: !GetAtt UploadsCloudFrontDistribution.DomainName
+
+    CloudFrontUploadsS3CanonicalUserId:
+      Value: !GetAtt UploadsCloudFrontOriginAccessIdentity.S3CanonicalUserId
+
+    GitBranch:
+      Value: ${git:branch}
+
+    GitDescribe:
+      Value: ${git:describeLight}
+
+    GitIsDirty:
+      Value: ${git:isDirty}
+
+functions:
+
+  viewerRequest:
+    name: ${self:provider.stackName}-viewerRequest
+    handler: edge_app.handlers.viewer_request
+    memorySize: 128
+    timeout: 1
+    lambdaAtEdge:
+       distribution: UploadsCloudFrontDistribution
+       eventType: viewer-request
+
+  originRequest:
+    name: ${self:provider.stackName}-originRequest
+    handler: edge_app.handlers.origin_request
+    memorySize: 128
+    timeout: 1
+    lambdaAtEdge:
+       distribution: UploadsCloudFrontDistribution
+       eventType: origin-request
+
+# keep this miminal for smaller packages and thus faster deployments
+package:
+  exclude:
+    - ./**
+  include:
+    - edge_app/**
+
+plugins:
+  - '@silvermine/serverless-plugin-cloudfront-lambda-edge'
+  - serverless-plugin-git-variables

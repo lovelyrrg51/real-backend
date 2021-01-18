@@ -1,0 +1,98 @@
+service: real-auth
+frameworkVersion: '>=1.0.0 <2.0.0'
+
+provider:
+  name: aws
+  profile: real-${self:provider.stage}
+  stackName: real-${self:provider.stage}-auth
+  stage: ${opt:stage, 'dev'}
+  runtime: python3.8
+  logRetentionInDays: 7
+  timeout: 30
+  tracing:
+    apiGateway: true
+    lambda: PassThrough
+
+  environment:
+    AWS_ACCOUNT_ID: '#{AWS::AccountId}'
+    COGNITO_USER_POOL_ID: ${cf:real-${self:provider.stage}-main.CognitoUserPoolId}
+    COGNITO_USER_POOL_BACKEND_CLIENT_ID: ${cf:real-${self:provider.stage}-main.CognitoBackendUserPoolClientId}
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - cognito-idp:*
+      Resource: arn:aws:cognito-idp:*:*:*
+
+  apiKeys:
+    - ${self:provider.stackName}-apiKey1
+
+  usagePlan:
+    throttle:
+      burstLimit: 200
+      rateLimit: 100
+
+custom:
+  # https://github.com/ACloudGuru/serverless-plugin-aws-alerts
+  alerts:
+    stages:
+      - production
+      - staging
+      - dev  # for now
+    dashboards: true
+    topics:
+      alarm:
+        topic: ${self:service}-${self:provider.stage}-alerts-alarm
+
+functions:
+
+  getUsernameStatus:
+    name: ${self:provider.stackName}-getUsernameStatus
+    handler: real_auth.handlers.get_username_status
+    events:
+      - http:
+          path: username/status
+          method: get
+          private: true
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+  postUserConfirm:
+    name: ${self:provider.stackName}-postUserConfirm
+    handler: real_auth.handlers.post_user_confirm
+    events:
+      - http:
+          path: user/confirm
+          method: post
+          private: true
+    alarms:
+      - functionErrors
+      - functionThrottles
+
+resources:
+
+  Outputs:
+
+    GitBranch:
+      Value: ${git:branch}
+
+    GitDescribe:
+      Value: ${git:describeLight}
+
+    GitIsDirty:
+      Value: ${git:isDirty}
+
+# keep this miminal for smaller packages and thus faster deployments
+package:
+  exclude:
+    - ./**
+  include:
+    - real_auth/**/*.py
+    - requirements.txt
+
+plugins:
+  - serverless-pseudo-parameters
+  - serverless-python-requirements
+  - serverless-plugin-aws-alerts
+  - serverless-plugin-git-variables

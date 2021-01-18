@@ -1,0 +1,48 @@
+#set ($followStatus = $util.defaultIfNull($ctx.args.followStatus, 'FOLLOWING'))
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#set ($targetUserId = $ctx.source.userId)
+
+#if ($followStatus == 'FOLLOWING')
+
+  ## If caller is blocked by target, and this field is being resolved
+  ## then we can be guaranteed that parent resolver filled in blockerStatus
+  #if ($ctx.source.blockerStatus == 'BLOCKING')
+    #return
+  #end
+
+  ## if the target user is private, and caller is not a follower, then return null
+  #if ($ctx.source.privacyStatus == 'PRIVATE')
+    #if ($ctx.source.followedStatus != 'SELF' and $ctx.source.followedStatus != 'FOLLOWING')
+      #return
+    #end
+  #end
+
+  ## if followCountsHidden is set, and the caller is not looking at their
+  ## own profile, hide the count
+  #if ($targetUserId != $callerUserId)
+    #if ($util.defaultIfNull($ctx.source.followCountsHidden, false))
+      #return
+    #end
+  #end
+
+  #set ($val = $ctx.source.followerCount)
+
+#else
+
+  ## private to the user themselves
+  #if ($callerUserId != $targetUserId)
+    #return
+  #end
+
+  #if ($followStatus == 'REQUESTED')
+    #set ($val = $ctx.source.followersRequestedCount)
+  #else
+    $util.error("ClientError: Cannot request followStatus of $followStatus", 'ClientError')
+  #end
+
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.defaultIfNull($val, 0)
+}

@@ -1,0 +1,23 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+
+## remove missing albums from result set (in process of being deleted?)
+#set ($albums = [])
+#foreach ($item in $ctx.prev.result)
+
+  #if (! $util.isString($item))
+    ## item is an already-resolved album object
+    $util.qr($albums.add($item))
+  #else
+    ## item is a albumId
+    #set ($index = $ctx.stash.albumIdToIndex[$item])
+    #if (! $util.isNull($ctx.result.data.${dynamoTable}[$index]))
+      #set ($album = $ctx.result.data.${dynamoTable}[$index])
+      $util.qr($albums.add($album))
+    #end
+  #end
+
+#end
+
+$util.toJson($albums)

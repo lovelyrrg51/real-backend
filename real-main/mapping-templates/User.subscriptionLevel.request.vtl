@@ -1,0 +1,11 @@
+#set ($targetUser = $ctx.source)
+
+## Hide if caller is blocked by target 
+#if ($targetUser.blockerStatus == 'BLOCKING')
+  #return
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": "$util.defaultIfNull($targetUser.subscriptionLevel, 'BASIC')"
+}

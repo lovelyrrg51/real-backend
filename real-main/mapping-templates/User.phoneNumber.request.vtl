@@ -1,0 +1,9 @@
+## phoneNumber is private to the user themselves
+#if ($ctx.source.userId != $ctx.identity.cognitoIdentityId)
+  #return ()
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($ctx.source.phoneNumber)
+}

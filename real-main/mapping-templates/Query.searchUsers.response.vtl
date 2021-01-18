@@ -1,0 +1,23 @@
+#set ($userIds = [])
+#foreach($hit in $ctx.result.hits.hits)
+  #set ($userId = $hit.get('_source').userId)
+  $util.qr($userIds.add($userId))
+#end
+
+## Int parsing in vtl https://stackoverflow.com/a/2156593
+#set ($nextToken = $util.defaultIfNull($ctx.args.nextToken, '0'))
+#set ($resultSetStart = 0)
+#set ($resultSetStart = $resultSetStart.parseInt($nextToken))
+
+#set ($resultSetSize = $ctx.result.hits.hits.size())
+#set ($resultSetCoversTo = $resultSetStart + $resultSetSize)
+#set ($totalAvailResults = $ctx.result.hits.total.value)
+
+#if ($totalAvailResults > $resultSetCoversTo)
+  #set ($nextToken = $resultSetCoversTo)
+#end
+
+$util.toJson({
+  'nextToken': $nextToken,
+  'items': $userIds
+})

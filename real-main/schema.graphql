@@ -1,0 +1,985 @@
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+type Query {
+  ####
+  # For queries that return paginated lists of items:
+  #
+  # The 'limit' argument:
+  #   - may be set to values from 1 to 100, inclusive
+  #   - defaults to 20 if left unset
+  #   - is an upper bound on the number of items returned. Note that just because less items are
+  #     returned than 'limit', that does *not* indicate their are no more items available.
+  #
+  # The 'nextToken' argument / response field:
+  #   - in a response, if set to null, that indicates there are no more items available on the server
+  #   - if set to a non-null value (ie an opaque string), then that string can be passed as the `nextToken`
+  #     argument in a subsequent call of the same query to retrieve more items starting from where the last
+  #     result set ended
+  #
+  # The 'reverse' argument:
+  #   - defaults to False if left unset
+  #   - not present on all queries that return paginated lists
+  ####
+
+  # Check username availability
+  usernameStatus(username: String!): UsernameStatus!
+
+  # The caller's user object, or throw an error
+  self: User!
+
+  # A user's user object, if it exists
+  user(userId: ID!): User
+
+  # Search users
+  searchUsers(searchToken: String!, limit: Int, nextToken: String): PaginatedUsers!
+
+  # Find contacts
+  #   - max of 100 ContactInputs may be submitted at a time
+  #   - there will be one FoundContact in the response for every ContactInput in the request
+  #   - for FoundContacts that were found, FoundContact.user will be the user that matched.
+  #   - for FoundContacts that were not found, FoundContact.user will be null
+  findContacts(contacts: [ContactInput!]!): [FoundContact!]!
+
+  # Globally trending users
+  trendingUsers(limit: Int, nextToken: String): PaginatedUsers!
+
+  # Swiped-right users for only diamond user
+  swipedRightUsers: [User!]
+
+  # A specific post
+  #   - posts that do not have COMPLETED postStatus are private to only the post owner
+  #   - posts of private users are private to only themselves and their followers
+  post(postId: ID!): Post
+
+  # Find posts by keywords
+  findPosts(keywords: String!, limit: Int, nextToken: String): PaginatedPosts!
+
+  # Find similar posts
+  #   - find keywords matched posts
+  #   - return order by trending score
+  similarPosts(postId: ID!, limit: Int, nextToken: String): PaginatedPosts!
+
+  # Globally trending posts
+  trendingPosts(limit: Int, nextToken: String): PaginatedPosts!
+
+  # Search keywords for autocomplete
+  searchKeywords(keyword: String!): [String]!
+
+  # A specific album
+  #   - albums of a private user are private to only themselves and their followers
+  album(albumId: ID!): Album
+
+  # A specific chat
+  #   - chats are private to just the users within them
+  chat(chatId: ID!): Chat
+}
+
+type Mutation {
+  # Set up a new user account
+  createAnonymousUser: CognitoTokens!
+  createCognitoOnlyUser(username: String!, fullName: String): User
+  createAppleUser(username: String!, fullName: String, appleIdToken: String!): User
+  createFacebookUser(username: String!, fullName: String, facebookAccessToken: String!): User
+  createGoogleUser(username: String!, fullName: String, googleIdToken: String!): User
+
+  # Add a federated login to the user's account
+  linkAppleLogin(appleIdToken: String!): User
+  linkFacebookLogin(facebookAccessToken: String!): User
+  linkGoogleLogin(googleIdToken: String!): User
+
+  # Change email, with verification. Use these mutations - do not update the user pool directly.
+  startChangeUserEmail(email: AWSEmail!): User
+  finishChangeUserEmail(verificationCode: String!): User
+
+  # Change phone, with verification. Use these mutations - do not update the user pool directly.
+  startChangeUserPhoneNumber(phoneNumber: AWSPhone!): User
+  finishChangeUserPhoneNumber(verificationCode: String!): User
+
+  # Set the user's password
+  #   - the encryptedPassword parameter should be the user's new password, encrypted
+  #     using a REAL public key. See the integration tests for example usage.
+  setUserPassword(encryptedPassword: String!): User
+
+  # Reset the caller's user account to its initial state (primarily for integration testing)
+  #   - excluding cognito, all state associated with user is deleted - including followers, others's comments on our posts, etc
+  #   - the user's preferred_username in congito will be deleted
+  #   - if the `newUsername` argument is set, then the caller's account will be re-initialized with the given username.
+  #     This is equivalent to calling Mutation.createCognitoOnlyUser(username: $newUsername) directly after this call.
+  resetUser(newUsername: String): User
+
+  # Disable or delete the user account. Cannot be reversed via GQL api.
+  disableUser: User
+  deleteUser: User
+
+  # To track usage of the app
+  reportScreenViews(screens: [String!]!): Boolean
+
+  # After user initiates a in-app subscription with the apple app store, the receipt should be uploaded here
+  addAppStoreReceipt(receiptData: String!): Boolean
+
+  # Let the user give themselves some free Diamond subscription
+  grantUserSubscriptionBonus: User
+
+  # Set optional user details.
+  # Only the specified arguments will be set.
+  # To delete an String/ID argument, set it to the empty string (ie bio="").
+  setUserDetails(
+    username: String,
+    fullName: String,
+    displayName: String,
+    bio: String,
+    photoPostId: ID,  # must be refer to a completed image post
+    privacyStatus: PrivacyStatus,
+    followCountsHidden: Boolean,
+    viewCountsHidden: Boolean,
+    commentsDisabled: Boolean,
+    likesDisabled: Boolean,
+    sharingDisabled: Boolean,
+    verificationHidden: Boolean,
+    languageCode: String,
+    themeCode: String,
+    dateOfBirth: AWSDate,
+    gender: UserGender,
+    location: LocationInput,
+    height: Int,  # unit is inch
+    matchAgeRange: AgeRangeInput,
+    matchGenders: [UserGender!],
+    matchLocationRadius: Int,
+    matchHeightRange: HeightRangeInput,
+  ): User
+
+  # Various one-off user property setters
+  # Set to the empty string to delete a property
+  setUserAcceptedEULAVersion(version: String!): User
+  setUserAPNSToken(token: String!): User
+
+  # Enable/disable dating for a user
+  setUserDatingStatus(status: DatingStatus!): User
+
+  # Follow or unfollow a user
+  # If the user has a private profile, followUser will create a follow request
+  followUser(userId: ID!): User
+  unfollowUser(userId: ID!): User
+
+  # Accept or Deny follow requests
+  acceptFollowerUser(userId: ID!): User
+  denyFollowerUser(userId: ID!): User
+
+  # Block/unblock a user
+  blockUser(userId: ID!): User
+  unblockUser(userId: ID!): User
+
+  # Dating
+  rejectMatch(userId: ID!): Boolean
+  approveMatch(userId: ID!): Boolean
+
+  # Add a Post
+  #   - postId should be a random v4 uuid generated client-side
+  #   - lifetime should be a ISO Duration string. Ex: 1 day: 'P1D', 1 week: 'P7D', 1 month: 'P1M', 1 year: 'P1Y'
+  #   - if lifetime is unset, defaults to infinite
+  #   - setAsUserPhoto:
+  #     - may only be used with IMAGE posts
+  #     - if set to True, the post will be set as user profile photo if/when it reaches COMPLETED status
+  addPost(
+    postId: ID!,
+    postType: PostType,  # defaults to IMAGE if not supplied
+    albumId: ID,
+    lifetime: String,
+    text: String,
+    imageInput: ImageInput,
+    commentsDisabled: Boolean,
+    likesDisabled: Boolean,
+    sharingDisabled: Boolean,
+    verificationHidden: Boolean,
+    setAsUserPhoto: Boolean,
+    keywords: [String!],
+  ): Post
+
+  # Edit a Post
+  editPost(
+    postId: ID!,
+    text: String,
+    commentsDisabled: Boolean,
+    likesDisabled: Boolean,
+    sharingDisabled: Boolean,
+    verificationHidden: Boolean,
+    keywords: [String!],
+  ): Post
+
+  # Edit Post.album
+  #   - to remove the post from its album, set albumId to null
+  #   - to change which album the post is in, set albumId to the id of the new album
+  editPostAlbum(postId: ID!, albumId: ID): Post
+
+  # Edit the order in which a Post appears in an Album
+  #   - the Posts identified by postId and precedingPostId must be in the same Album
+  #   - if precedingPostId is non-null, postId will be placed directly after it
+  #   - if precedingPostId is null, postId will be placed at the front
+  editPostAlbumOrder(postId: ID!, precedingPostId: ID): Post
+
+  # Edit Post.expiresAt
+  #   - leave expiresAt unset, or set it to null to make the post last forever
+  #   - setting expiresAt to a value in the past is an error
+  #   - trying to edit a post that is not ours is an error
+  editPostExpiresAt(postId: ID!, expiresAt: AWSDateTime): Post
+
+  # Flag a Post as inappropriate
+  #   - trying to flag a post we do not have access to is an error
+  flagPost(postId: ID!): Post
+
+  # Delete a Post
+  deletePost(postId: ID!): Post
+
+  # Archive a Post
+  #   - can only be done to your own posts
+  #   - removes the post from followers feeds, stories
+  #   - makes the post only visible to yourself
+  archivePost(postId: ID!): Post
+
+  # Restore an archived post
+  restoreArchivedPost(postId: ID!): Post
+
+  # Post likes
+  #   - trying to like a post we do not have access to is an error
+  #   - onymously means non-anonymously
+  onymouslyLikePost(postId: ID!): Post
+  anonymouslyLikePost(postId: ID!): Post
+  dislikePost(postId: ID!): Post
+
+  # Report post views
+  reportPostViews(postIds: [ID!]!, viewType: ViewType): Boolean
+
+  # Report a notification card was read
+  deleteCard(cardId: ID!): Card
+
+  # Add a comment
+  #   - trying to comment on a post we do not have access to is an error
+  #   - trying to comment on a post that has comments disabled is an error
+  #   - commentId should be a client-side generated uuidv4
+  addComment(commentId: ID!, postId: ID!, text: String!): Comment
+
+  # Delete a comment
+  #   - deleting a comment that is neither ours nor on a post of ours is an error
+  deleteComment(commentId: ID!): Comment
+
+  # Flag a Comment as inappropriate
+  #   - trying to flag a comment we do not have access to is an error
+  flagComment(commentId: ID!): Comment
+
+  addAlbum(albumId: ID!, name: String!, description: String): Album
+  # Edit an Album
+  #   - attributes to be left unchanged should be left undefined or set to null
+  #   - to remove string attribute, set it to the empty string
+  #   - Album.name is a required attribute so trying to remove it is an error
+  editAlbum(albumId: ID!, name: String, description: String): Album
+  deleteAlbum(albumId: ID!): Album
+
+  # Chats
+  #   - there may exist at most one direct chat between two users
+  #   - it is an error to try to add someone to or leave from a direct chat
+  #   - when creating a chat, the first message must be included
+  createDirectChat(chatId: ID!, userId: ID!, messageId: ID! messageText: String!): Chat
+  createGroupChat(chatId: ID!, name: String, userIds: [ID!]!, messageId: ID!, messageText: String!): Chat
+  editGroupChat(chatId: ID!, name: String!): Chat
+  addToGroupChat(chatId: ID!, userIds: [ID!]!): Chat
+  leaveGroupChat(chatId: ID!): Chat
+  reportChatViews(chatIds: [ID!]!): Boolean
+  flagChat(chatId: ID!): Chat
+
+  # Chat messages
+  #   - may only be edited or deleted by message author
+  addChatMessage(chatId: ID!, messageId: ID!, text: String!): ChatMessage
+  editChatMessage(messageId: ID!, text: String!): ChatMessage
+  deleteChatMessage(messageId: ID!): ChatMessage
+  flagChatMessage(messageId: ID!): ChatMessage
+
+  # Used internally to fire subscription events. Calling externally is an error.
+  triggerNotification(input: NotificationInput!): Notification!
+  triggerCardNotification(input: CardNotificationInput!): CardNotification!
+  triggerChatMessageNotification(input: ChatMessageNotificationInput!): ChatMessageNotification!
+  triggerPostNotification(input: PostNotificationInput!): PostNotification!  # DEPRECATED
+
+  # These are for testing the error logging & alerting system.
+  lambdaClientError(arg1: String, arg2: String): String
+  lambdaServerError(arg1: String, arg2: String): String
+  dynamoServerError(arg1: String, arg2: String): String
+}
+
+type Subscription {
+  # One subscription to rule them all. New NotificaitonTypes should be added to this subscription
+  onNotification(userId: ID!): Notification @aws_subscribe(mutations: ["triggerNotification"])
+
+  # Fires for changes (see CardNotificationType) to callers's cards
+  #   - userId must be caller's own userId
+  onCardNotification(userId: ID!): CardNotification @aws_subscribe(mutations: ["triggerCardNotification"])
+
+  # Fires for changes (adds, edits, deletes) to chat messages in chats we are in or have just been added to
+  #   - userId must be caller's own userId
+  #   - does not fire for the caller's own messages
+  onChatMessageNotification(userId: ID!): ChatMessageNotification @aws_subscribe(mutations: ["triggerChatMessageNotification"])
+
+  # DEPRECATED: use onNotifcation with POST_COMPLETED and POST_ERROR NotificationTypes
+  onPostNotification(userId: ID!): PostNotification @aws_subscribe(mutations: ["triggerPostNotification"])
+}
+
+type Notification {
+  userId: ID!  # user this notification is intended for
+  type: NotificationType!
+
+  # Each of the following fields will be non-null only for some NotificationTypes,
+  # exactly which is listed in the comments for the NotificationType
+  followedUserId: ID
+  matchUserId: ID
+  postId: ID
+  userChatsWithUnviewedMessagesCount: Int
+}
+
+# POST_COMPLETED
+#   - fires when one of the user's posts reaches COMPLETED state for the first time
+#   - Notification.postId: the id of the post
+#
+# POST_ERROR
+#   - fires when one of the user's posts reaches ERROR state
+#   - Notification.postId: the id of the post
+#
+# USER_CHATS_WITH_UNVIEWED_MESSAGES_COUNT_CHANGED
+#   - fires when User.chatsWithUnviewedMessagesCount changes
+#   - Notification.userChatsWithUnviewedMessagesCount: the new value
+#
+# USER_DATING_MATCH_CHANGED
+#   - fires when a dating matches is added, removed or changes status
+#   - does not fire for changes in ordering for a user's matches
+#   - Notification.matchUserId: the id of the matched user
+#
+# USER_FEED_CHANGED
+#   - fires when the User's feed may have changed and should be refreshed
+#
+# USER_FOLLOWED_USERS_WITH_STORIES_CHANGED
+#   - fires when one of the user's followeds changes their first story
+#   - Notification.postId: the id of the post that is now the followed user's first story
+#                          will be null if the followed user no longer has a first story
+#   - Notification.followedUserId: the id of the followed user whose first story changed
+enum NotificationType {
+  POST_COMPLETED
+  POST_ERROR
+  USER_CHATS_WITH_UNVIEWED_MESSAGES_COUNT_CHANGED
+  USER_DATING_MATCH_CHANGED
+  USER_FEED_CHANGED
+  USER_FOLLOWED_USERS_WITH_STORIES_CHANGED
+}
+
+input NotificationInput {
+  # Used internally to get AppSync to send notifications over GQL subscriptiosn
+  userId: ID!  # user this notification is intended for
+  type: NotificationType!
+  followedUserId: ID
+  matchUserId: ID
+  postId: ID
+  userChatsWithUnviewedMessagesCount: Int
+}
+
+enum UserGender {
+  MALE
+  FEMALE
+}
+
+enum DatingStatus {
+  ENABLED
+  DISABLED
+}
+
+enum MatchStatus {
+  NOT_MATCHED
+  POTENTIAL
+  REJECTED
+  APPROVED
+  CONFIRMED
+}
+
+type User {
+
+  # public info readable by all logged-in users, including blocked users
+  userId: ID!
+  username: String!
+
+  # public info, readable by all logged-in non-blocked users
+  userStatus: UserStatus
+  privacyStatus: PrivacyStatus
+  followedStatus: FollowStatus!  # is the caller following them?
+  followerStatus: FollowStatus!  # are they following the caller?
+  fullName: String
+  displayName: String
+  themeCode: String
+  signedUpAt: AWSDateTime
+  photo: Image
+  subscriptionLevel: SubscriptionLevel
+  dateOfBirth: AWSDate
+  gender: UserGender
+
+  blockedStatus: BlockStatus!  # is the caller blocking them?
+  blockerStatus: BlockStatus!  # are they blocking the caller?
+
+  # Sum of user's posts' viewedByCount
+  #   - null if user has viewCountsHidden set
+  postViewedByCount: Int
+
+  # User's bio
+  #   - the bio of a private user is private to only themselves and their followers
+  bio: String
+
+  # private to user themselves only
+  email: AWSEmail
+  phoneNumber: AWSPhone
+  languageCode: String
+  acceptedEULAVersion: String
+  followCountsHidden: Boolean
+  viewCountsHidden: Boolean
+  commentsDisabled: Boolean
+  likesDisabled: Boolean
+  sharingDisabled: Boolean
+  verificationHidden: Boolean
+  subscriptionExpiresAt: AWSDateTime
+  location: Location
+  height: Int
+  datingStatus: DatingStatus
+  matchAgeRange: AgeRange
+  matchGenders: [UserGender!]
+  matchLocationRadius: Int
+  matchHeightRange: HeightRange
+
+  # User's dating matches
+  #   - private to the user themselves only
+  #   - cannot request NOT_MATCHED
+  matchedUsers(matchStatus: MatchStatus!, limit: Int, nextToken: String): PaginatedUsers
+
+  # Is the user one of the caller's dating matches?
+  matchStatus: MatchStatus!
+
+  # User's feed
+  #   - private to the user themselves only
+  #   - ordered by postedAt, most recently posted first
+  feed(limit: Int, nextToken: String): PaginatedPosts
+
+  # User's stories
+  #   - stories of a private user are private to only themselves and their followers
+  #   - ordered by expiresAt, with the next to expire first
+  stories(limit: Int, nextToken: String): PaginatedPosts
+
+  # User's posts
+  #   - postStatus defaults to COMPLETED if unset
+  #   - when looking at another user's posts, postStatus may only be set to COMPLETED
+  #   - posts of a private user are private to only themselves and their followers
+  posts(postStatus: PostStatus, postType: PostType, limit: Int, nextToken: String): PaginatedPosts
+  postCount: Int  # only posts with COMPLETED status
+
+  # User's posts that have unviewed comments
+  #   - private to the user themselves
+  #   - ordered with post with most recent comment first
+  postsWithUnviewedComments(limit: Int, nextToken: String): PaginatedPosts
+  postsByNewCommentActivity(limit: Int, nextToken: String): PaginatedPosts  # DEPRECATED use postsWithUnviewedComments
+
+  # User's notification cards
+  #   - private to the user themselves
+  #   - ordered by most recently created first
+  cards(limit: Int, nextToken: String): PaginatedCards
+  cardCount: Int
+
+  # Posts the user has anonymously liked
+  #   - private to user themselves only
+  #   - ordered with most recently liked post first
+  anonymouslyLikedPosts(limit: Int, nextToken: String): PaginatedPosts
+
+  # Posts the user has onymously liked
+  #   - if the user has blocked caller, will be null
+  #   - ordered with most recently liked post first
+  onymouslyLikedPosts(limit: Int, nextToken: String): PaginatedPosts
+
+  # Users the user follows
+  #   - null for users with followCountsHidden set, if user has blocked caller, or if user is
+  #     private and caller is not a follower
+  #   - followStatus cannot be set to NOT_FOLLOWING
+  #   - followStatus can be set to values different from the default only when looking at our own user
+  followedUsers(followStatus: FollowStatus = FOLLOWING, limit: Int, nextToken: String): PaginatedUsers
+  followedCount: Int  # DEPRECATED: use followedsCount
+  followedsCount: Int  # only counts users with followStatus = FOLLOWING
+
+  # Users the user follows that have stories
+  #   - private to user themselves only
+  #   - ordered by user-with-story-closest-to-expiring-first
+  followedUsersWithStories(limit: Int, nextToken: String): PaginatedUsers
+
+  # Users that follow the user
+  #   - null for users with followCountsHidden set, if user has blocked caller, or if user is
+  #     private and caller is not a follower
+  #   - followStatus cannot be set to NOT_FOLLOWING
+  #   - followStatus can be set to values different from the default only when looking at our own user
+  followerUsers(followStatus: FollowStatus = FOLLOWING, limit: Int, nextToken: String): PaginatedUsers
+  followerCount: Int # DEPRECATED: use followersCount
+  followersCount(followStatus: FollowStatus = FOLLOWING): Int  # only supports FOLLOWING, REQUESTED (so far)
+
+  # Users the user has blocked
+  #   - private to user themselves only
+  #   - ordered by blockedAt, most recent first
+  blockedUsers(limit: Int, nextToken: String): PaginatedUsers
+
+  # User's albums
+  #   - albums of a private user are private to only themselves and their followers
+  #   - ordered with most recently created album first
+  albums(limit: Int, nextToken: String, reverse: Boolean): PaginatedAlbums
+  albumCount: Int
+
+  # Chats the user is in
+  #   - private to the user themselves
+  #   - ordered by Chat.lastMessageActivityAt, most recent first
+  chats(limit: Int, nextToken: String): PaginatedChats
+  chatCount: Int
+  chatsWithUnviewedMessagesCount: Int
+
+  # Direct-message chat between caller and user. Null when looking at:
+  #   - self
+  #   - a user that has blocked caller or that caller has blocked
+  #   - a user with whom caller has not exchanged direct messages
+  directChat: Chat
+
+  # when user last called findUsers
+  lastFoundContactsAt: AWSDateTime
+
+  # when the dating status is set from enabled to disabled
+  userDisableDatingDate: AWSDateTime
+}
+
+type PaginatedUsers {
+  items: [User!]!
+  nextToken: String
+}
+
+enum SubscriptionLevel {
+  BASIC
+  DIAMOND
+}
+
+type Card {
+  # cardId's will be re-used for well-known cards (ex: you have new comments)
+  cardId: ID!
+  title: String!
+  subTitle: String
+  action: String!  # an AWSURL, but AWS occasionally errors out trying to serialize our 'https://real.app' urls
+  thumbnail: Image
+}
+
+type PaginatedCards {
+  items: [Card!]!
+  nextToken: String
+}
+
+type CardNotification {
+  userId: ID!  # user this notification is intended for
+  type: CardNotificationType!
+  card: Card!
+}
+
+enum CardNotificationType {
+  ADDED
+  EDITED
+  DELETED
+}
+
+input CardNotificationInput {
+  userId: ID!  # user this notification is intended for
+  type: CardNotificationType!
+  cardId: ID!
+  title: String!
+  subTitle: String
+  action: String!  # an AWSURL, but AWS occasionally errors out trying to serialize our 'https://real.app' urls
+}
+
+type Chat {
+  chatId: ID!
+  chatType: ChatType!
+  name: String
+  createdAt: AWSDateTime!
+  lastMessageActivityAt: AWSDateTime
+  flagStatus: FlagStatus!  # has the caller flagged this chat?
+  # Users: ordered by joinedAt, earliest first
+  #   - excludeUserId will filter out any user with that userId from the results
+  users(limit: Int, nextToken: String, excludeUserId: ID): PaginatedUsers!
+  userCount: Int!  # DEPRECATED: use usersCount
+  usersCount: Int!
+  # Messages: ordered by createdAt, earliest first by default
+  messages(limit: Int, nextToken: String, reverse: Boolean): PaginatedChatMessages!
+  messageCount: Int!  # DEPRECATED: use messagesCount
+  messagesCount(viewedStatus: ViewedStatus): Int!
+}
+
+type PaginatedChats {
+  items: [Chat!]!
+  nextToken: String
+}
+
+type ChatMessage {
+  messageId: ID!
+  text: String!
+  textTaggedUsers: [TextTaggedUser!]!  # max of 100
+  createdAt: AWSDateTime!
+  lastEditedAt: AWSDateTime
+  chat: Chat!
+  authorUserId: ID  # null if this is a system message (ex: 'user X left the chat')
+  author: User  # null if either system message, or user deleted, or blocked/er by/of caller
+  viewedStatus: ViewedStatus!  # has the caller viewed this message?
+  flagStatus: FlagStatus!  # has the caller flagged this message?
+}
+
+type PaginatedChatMessages {
+  items: [ChatMessage!]!
+  nextToken: String
+}
+
+type ChatMessageNotification {
+  userId: ID!  # user this notification is intended for
+  type: ChatMessageNotificationType!
+  message: ChatMessage!
+}
+
+enum ChatMessageNotificationType {
+  ADDED
+  EDITED
+  DELETED
+}
+
+input ChatMessageNotificationInput {
+  userId: ID!  # user this notification is intended for
+  type: ChatMessageNotificationType!
+  messageId: ID!
+  chatId: ID!
+  text: String!
+  textTaggedUserIds: [TextTaggedUserIdInput!]!
+  createdAt: AWSDateTime!
+  lastEditedAt: AWSDateTime
+  authorUserId: ID  # null for system messages
+  # Stringified JSON of the author's serialized representation
+  #   - null for system messages or when caller has blocking relationship with author
+  authorEncoded : String
+}
+
+enum UsernameStatus {
+  AVAILABLE
+  NOT_AVAILABLE
+  INVALID
+}
+
+enum UserStatus {
+  ACTIVE
+  ANONYMOUS
+  DISABLED
+  DELETING
+  RESETTING
+}
+
+enum PrivacyStatus {
+  PUBLIC
+  PRIVATE
+}
+
+enum ChatType {
+  DIRECT
+  GROUP
+}
+
+enum ViewedStatus {
+  NOT_VIEWED
+  VIEWED
+}
+
+enum FollowStatus {
+  NOT_FOLLOWING
+  FOLLOWING
+  SELF
+  REQUESTED
+  DENIED
+}
+
+enum BlockStatus {
+  NOT_BLOCKING
+  BLOCKING
+  SELF
+}
+
+enum PostStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  ERROR
+  ARCHIVED
+  DELETING
+}
+
+enum PostType {
+  TEXT_ONLY
+  IMAGE
+  VIDEO
+}
+
+enum LikeStatus {
+  ONYMOUSLY_LIKED
+  ANONYMOUSLY_LIKED
+  NOT_LIKED
+}
+
+enum FlagStatus {
+  FLAGGED
+  NOT_FLAGGED
+}
+
+enum ImageFormat {
+  HEIC
+  JPEG
+}
+
+enum ViewType {
+  THUMBNAIL
+  FOCUS
+}
+
+input ImageInput {
+  takenInReal: Boolean
+  imageFormat: ImageFormat = JPEG
+  originalFormat: String
+  originalMetadata: String
+
+  # There are two ways to upload image data:
+  #   - by http PUTing image data to Post.imageUploadUrl, after creating the post OR
+  #   - by including image data here, as a base64-encoded string (intended for small images)
+  imageData: String
+
+  # Instruct the backend to crop off some of the image
+  crop: CropInput
+}
+
+input CropInput {
+  upperLeft: PointInput!
+  lowerRight: PointInput!
+}
+
+input PointInput {
+  x: Int!
+  y: Int!
+}
+
+type Color {
+  r: Int
+  g: Int
+  b: Int
+}
+
+type Image {
+  url: AWSURL!
+  url64p: AWSURL!
+  url480p: AWSURL!
+  url1080p: AWSURL!
+  url4k: AWSURL!
+  width: Int
+  height: Int
+  colors: [Color!]
+}
+
+type Video {
+  urlMasterM3U8: AWSURL!
+  accessCookies: CloudFrontAccessCookies!
+}
+
+# https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-setting-signed-cookie-custom-policy.html
+type CloudFrontAccessCookies {
+  domain: String!           # domain the cookies should be set on
+  path: String!             # path the cookies should be set on
+  expiresAt: AWSDateTime!   # when the cookie is good till
+  policy: String!           # value of CloudFront-Policy cookie
+  signature: String!        # value of CloudFront-Signature cookie
+  keyPairId: String!        # value of CloudFront-Key-Pair-Id cookie
+}
+
+type Post {
+  postId: ID!
+  postedAt: AWSDateTime!
+  postedBy: User!
+  postType: PostType!
+  postStatus: PostStatus!
+  expiresAt: AWSDateTime  # null indicates no expiration
+  text: String
+  textTaggedUsers: [TextTaggedUser!]!  # max of 100
+  album: Album
+  flagStatus: FlagStatus!  # has the caller flagged this post?
+  likeStatus: LikeStatus!  # has the caller liked this post?
+  viewedStatus: ViewedStatus!  # has the caller viewed this post?
+  likesDisabled: Boolean
+  sharingDisabled: Boolean
+  verificationHidden: Boolean
+  isVerified: Boolean
+  keywords: [String!]
+
+  image: Image
+  imageUploadUrl: AWSURL
+
+  video: Video
+  videoUploadUrl: AWSURL
+
+  # The first post with the same image as this post
+  #   - null if post has not yet reached COMPLETED stage
+  #   - null if the caller does not have access to the original post
+  #   - will be a copy of parent post if parent post is the first with this image
+  originalPost: Post
+
+  # Unique users who have viewed this post
+  #   - ordered by when post was first viewed at
+  #   - visible only to owner of the post
+  #   - null if user has viewCountsHidden set
+  viewedBy(limit: Int, nextToken: String): PaginatedUsers
+  viewedByCount: Int
+
+  # Users that have onymously liked this post
+  #   - ordered with first like first
+  #   - like lists and counts are private to the post owner themselves
+  #   - onymous means non-anonymous
+  onymouslyLikedBy(limit: Int, nextToken: String): PaginatedUsers
+  onymousLikeCount: Int
+  anonymousLikeCount: Int
+
+  # Comments on the post
+  #   - null if comments are disabled
+  #   - ordered by commentedAt, oldest comment first
+  comments(limit: Int, nextToken: String, reverse: Boolean): PaginatedComments
+  commentCount: Int  # DEPRECATED: use commentsCount
+  commentsCount(viewedStatus: ViewedStatus): Int  # Only post owner may set viewedStatus
+  commentsDisabled: Boolean
+
+  # Have new comments appeared on the post since the last time a view of a comment was reported?
+  #   - private to post owner only
+  hasNewCommentActivity: Boolean  # DEPRECATED: use commentsCount(viewedStatus: NOT_VIEWED)
+}
+
+type PaginatedPosts {
+  # Set the optional arguments to filter down the set of returned posts
+  items(viewedStatus: ViewedStatus, isVerified: Boolean): [Post!]!
+  nextToken: String
+}
+
+# DEPRECATED
+type PostNotification {
+  userId: ID!  # user this notification is intended for
+  type: PostNotificationType!
+  post: Post!
+}
+
+# DEPRECATED
+enum PostNotificationType {
+  COMPLETED
+}
+
+# DEPRECATED
+input PostNotificationInput {
+  userId: ID!  # user this notification is intended for
+  type: PostNotificationType!
+  postId: ID!
+  postStatus: PostStatus!
+  isVerified: Boolean
+}
+
+type TextTaggedUser {
+  tag: String!  # ex: '@ian'
+  user: User!
+}
+
+input TextTaggedUserIdInput {
+  tag: String!  # ex: '@ian'
+  userId: ID!
+}
+
+type Comment {
+  commentId: ID!
+  commentedAt: AWSDateTime!
+  commentedBy: User!
+  text: String!
+  textTaggedUsers: [TextTaggedUser!]!  # max of 100
+  viewedStatus: ViewedStatus!  # has the caller viewed this comment?
+  flagStatus: FlagStatus!  # has the caller flagged this post?
+}
+
+type PaginatedComments {
+  items: [Comment!]!
+  nextToken: String
+}
+
+type Album {
+  albumId: ID!
+  createdAt: AWSDateTime!
+  ownedBy: User!
+  name: String!
+  description: String
+  art: Image!
+
+  # Posts in the album
+  #   - posts with status COMPLETED only
+  #   - ordered by postedAt, most recent post first
+  posts(limit: Int, nextToken: String): PaginatedPosts!
+  postCount: Int!
+  postsLastUpdatedAt: AWSDateTime
+}
+
+type PaginatedAlbums {
+  items: [Album!]!
+  nextToken: String
+}
+
+type AgeRange {
+  min: Int
+  max: Int
+}
+
+input AgeRangeInput {
+  min: Int
+  max: Int
+}
+
+type HeightRange {
+  min: Int
+  max: Int
+}
+
+input HeightRangeInput {
+  min: Int
+  max: Int
+}
+
+type Location {
+  latitude: Float!
+  longitude: Float!
+  accuracy: Int
+}
+
+input LocationInput {
+  latitude: Float!
+  longitude: Float!
+  accuracy: Int
+}
+
+type CognitoTokens {
+  AccessToken: String!
+  ExpiresIn: Int!
+  TokenType: String!
+  RefreshToken: String!
+  IdToken: String!
+}
+
+input ContactInput {
+  contactId: ID!
+  emails: [AWSEmail!]
+  phones: [AWSPhone!]
+}
+
+type FoundContact {
+  contactId: ID!
+  user: User
+}

@@ -1,0 +1,40 @@
+#if ($ctx.args.limit < 1 or $ctx.args.limit > 100)
+  $util.error('ClientError: Limit cannot be less than 1 or greater than 100', 'ClientError')
+#end
+#set ($limit = $util.defaultIfNull($ctx.args.limit, 20))
+
+#set ($user = $ctx.source)
+
+## Hide if target is blocking caller
+#if ($user.blockerStatus == 'BLOCKING')
+  #return
+#end
+
+## if the target user is private, and caller is not a follower, then hide
+#if ($user.privacyStatus == 'PRIVATE')
+  #if ($user.followedStatus != 'SELF' and $user.followedStatus != 'FOLLOWING')
+    #return
+  #end
+#end
+
+#set ($nowMs = $util.time.nowEpochMilliSeconds())
+#set ($aDayAheadMs = $nowMs + 86400000)
+#set ($aDayAhead = $util.time.epochMilliSecondsToISO8601($aDayAheadMs))
+
+{
+  "version": "2018-05-29",
+  "operation": "Query",
+  "query": {
+    "expression": "gsiA1PartitionKey = :pk and gsiA1SortKey between :skMin and :skMax",
+    "expressionValues": {
+      ":pk": { "S": "post/$user.userId" },
+      ":skMin": { "S": "COMPLETED/" },
+      ":skMax": { "S": "COMPLETED/$aDayAhead" }
+    }
+  },
+  "index": "GSI-A1",
+  "limit": $limit
+  #if ($ctx.args.nextToken)
+  , "nextToken": "$ctx.args.nextToken"
+  #end
+}

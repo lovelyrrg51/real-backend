@@ -1,0 +1,13 @@
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#if ($ctx.source.postedByUserId != $callerUserId)
+  #return
+#end
+
+#if ($ctx.source.postedBy.likesDisabled || $ctx.source.likesDisabled)
+  #return
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($util.defaultIfNull($ctx.source.anonymousLikeCount, 0))
+}

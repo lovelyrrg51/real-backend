@@ -1,0 +1,13 @@
+## Filter out users that are private and caller is not following
+
+#set ($users = [])
+#foreach ($user in $ctx.prev.result)
+  #if ($user.privacyStatus == 'PUBLIC' || $user.followedStatus == 'FOLLOWING' || $user.followedStatus == 'SELF')
+    $util.qr($users.add($user))
+  #end
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($users)
+}

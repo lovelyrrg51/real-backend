@@ -1,0 +1,247 @@
+Resources:
+
+  CognitoIdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    DeletionPolicy: Retain
+    Properties:
+      IdentityPoolName: RealIdentityPool_${self:provider.stage}  # AWS validation doesn't allow dashes in this string
+      AllowUnauthenticatedIdentities: true
+      CognitoIdentityProviders:
+        - ClientId: !Ref CognitoTestingUserPoolClient
+          ProviderName: !GetAtt CognitoUserPool.ProviderName
+          ServerSideTokenCheck: true
+        - ClientId: !Ref CognitoFrontendUserPoolClient
+          ProviderName: !GetAtt CognitoUserPool.ProviderName
+          ServerSideTokenCheck: true
+        - ClientId: !Ref CognitoBackendUserPoolClient
+          ProviderName: !GetAtt CognitoUserPool.ProviderName
+          ServerSideTokenCheck: true
+      # Google should be set up as an OIDC provider before deploying
+      # https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html
+      # https://medium.com/fullstack-with-react-native-aws-serverless-and/set-up-openid-connect-oidc-provider-in-aws-91d498f3c9f7
+      OpenIdConnectProviderARNs:
+        - 'arn:aws:iam::#{AWS::AccountId}:oidc-provider/accounts.google.com'
+      SupportedLoginProviders:
+        appleid.apple.com: ${env:AUTHENTICATION_PROVIDER_APPLEID, 'app.real.mobile'}
+        graph.facebook.com: '864583797262307'
+
+  CognitoIdentityPoolRoles:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref CognitoIdentityPool
+      Roles:
+        authenticated: !GetAtt CognitoIdentityPoolAuthRole.Arn
+        unauthenticated: !GetAtt CognitoIdentityPoolUnauthenticatedAuthRole.Arn
+
+  # IAM role used for authenticated users
+  # https://serverless-stack.com/chapters/configure-cognito-identity-pool-in-serverless.html
+  # https://github.com/sid88in/serverless-appsync-plugin/issues/70#issuecomment-384055728
+  CognitoIdentityPoolAuthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action:
+              - sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref CognitoIdentityPool
+      Policies:
+        - PolicyName: CognitoIdentityPoolAuthenticatedPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: appsync:GraphQL
+                # 'GraphQlApi' name comes from https://github.com/sid88in/serverless-appsync-plugin/blob/1.1.1/index.js#L11
+                Resource: !Join [ /, [ 'arn:aws:appsync:#{AWS::Region}:#{AWS::AccountId}:apis', !GetAtt GraphQlApi.ApiId, '*' ] ]
+              # https://aws-amplify.github.io/docs/js/analytics#update-your-iam-policy
+              - Effect: Allow
+                Action: mobiletargeting:PutEvents
+                Resource: !Join [ /, [ !GetAtt PinpointApp.Arn, 'events' ] ]
+
+  CognitoIdentityPoolUnauthenticatedAuthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action:
+              - sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref CognitoIdentityPool
+      Policies:
+        - PolicyName: CognitoIdentityPoolUnauthenticatedPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: appsync:GraphQL
+                # 'GraphQlApi' name comes from https://github.com/sid88in/serverless-appsync-plugin/blob/1.1.1/index.js#L11
+                Resource: !Join [ /, [ 'arn:aws:appsync:#{AWS::Region}:#{AWS::AccountId}:apis', !GetAtt GraphQlApi.ApiId, '*' ] ]
+              # https://aws-amplify.github.io/docs/js/analytics#update-your-iam-policy
+              - Effect: Allow
+                Action: mobiletargeting:PutEvents
+                Resource: !Join [ /, [ !GetAtt PinpointApp.Arn, 'events' ] ]
+
+  # IAM role for Cognito to send SMS's
+  CognitoSNSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - cognito-idp.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CognitoSNSPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sns:publish
+                Resource: '*'
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cognito-userpool.html
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    Properties:
+      UserPoolName: RealUserPool-${self:provider.stage}
+      AliasAttributes:
+        - email
+        - phone_number
+        - preferred_username
+      AutoVerifiedAttributes:
+        - email
+        - phone_number
+      EmailConfiguration:
+        EmailSendingAccount: DEVELOPER
+        SourceArn: ${self:custom.sesSender.arn}
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+      SmsConfiguration:
+        SnsCallerArn: !GetAtt CognitoSNSRole.Arn
+      Schema:
+        - Name: unverified_email
+          AttributeDataType: String
+          Mutable: true
+        - Name: unverified_phone
+          AttributeDataType: String
+          Mutable: true
+
+  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cognito-userpoolclient.html
+  CognitoBackendUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: RealBackendUserPoolClient-${self:provider.stage}
+      UserPoolId: !Ref CognitoUserPool
+      ExplicitAuthFlows:
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        - ALLOW_CUSTOM_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: false
+      PreventUserExistenceErrors: LEGACY
+      RefreshTokenValidity: 3650
+
+  CognitoTestingUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: RealTestingUserPoolClient-${self:provider.stage}
+      UserPoolId: !Ref CognitoUserPool
+      ExplicitAuthFlows:
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+      GenerateSecret: false
+      PreventUserExistenceErrors: ENABLED
+      RefreshTokenValidity: 3650
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        - real.app://oauth-callback
+      LogoutURLs:
+        - real.app://oauth-signout
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - aws.cognito.signin.user.admin
+        - email
+        - openid
+        - phone
+        - profile
+      ReadAttributes:
+        - email
+        - phone_number
+        - family_name
+        - email_verified
+        - phone_number_verified
+      WriteAttributes:
+        - email
+        - phone_number
+        - family_name
+
+  CognitoFrontendUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: RealFrontendUserPoolClient-${self:provider.stage}
+      UserPoolId: !Ref CognitoUserPool
+      ExplicitAuthFlows:
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+      GenerateSecret: false
+      PreventUserExistenceErrors: LEGACY
+      RefreshTokenValidity: 3650
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        - real.app://oauth-callback
+      LogoutURLs:
+        - real.app://oauth-signout
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - aws.cognito.signin.user.admin
+        - email
+        - openid
+        - phone
+        - profile
+      ReadAttributes:
+        - email
+        - phone_number
+      WriteAttributes:
+        - email
+        - phone_number
+
+Outputs:
+
+  CognitoUserPoolId:
+    Value: !Ref CognitoUserPool
+
+  CognitoBackendUserPoolClientId:
+    Value: !Ref CognitoBackendUserPoolClient
+
+  CognitoTestingUserPoolClientId:
+    Value: !Ref CognitoTestingUserPoolClient
+
+  CognitoFrontendUserPoolClientId:
+    Value: !Ref CognitoFrontendUserPoolClient
+
+  CognitoIdentityPoolId:
+    Value: !Ref CognitoIdentityPool

@@ -1,0 +1,5 @@
+## For Users.beginPipeline & Users.endPipeline
+#set ($ctx.stash.userIdAttribute = 'userId')
+#set ($ctx.stash.userAttribute = 'author')
+
+$util.toJson($ctx.source.items)

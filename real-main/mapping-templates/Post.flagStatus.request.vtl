@@ -1,0 +1,14 @@
+#if (! $util.isNull($ctx.source.flagStatus))
+  #return ($ctx.source.flagStatus)
+#end
+
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+
+{
+  "version": "2018-05-29",
+  "operation": "GetItem",
+  "key": {
+    "partitionKey": { "S": "post/$ctx.source.postId" },
+    "sortKey": { "S": "flag/$callerUserId" }
+  }
+}

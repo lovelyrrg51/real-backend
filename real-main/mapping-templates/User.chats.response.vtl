@@ -1,0 +1,17 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+
+## from each ChatMembership, pull out the chatId out of the pk
+## the PaginatedChats.items resolver will resolve each chatId to a chat object
+#set ($chatIds = [])
+#set ($prefix = "chat/")
+#foreach ($item in $ctx.result.items)
+  #set ($chatId = $item.partitionKey.substring($prefix.length()))
+  $util.qr($chatIds.add($chatId))
+#end
+
+$util.toJson({
+  'nextToken': $ctx.result.nextToken,
+  'items': $chatIds
+})

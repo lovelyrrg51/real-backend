@@ -1,0 +1,54 @@
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#set ($viewedStatus = $ctx.args.viewedStatus)
+#set ($isVerified = $ctx.args.isVerified)
+#set ($ctx.stash.posts = $ctx.prev.result)
+
+## if we're filtering on isVerified, do that now
+#if (!$util.isNull($isVerified))
+  #set ($posts = [])
+  #foreach ($post in $ctx.stash.posts)
+    #if ($post.isVerified == $isVerified)
+      $util.qr($posts.add($post))
+    #end
+  #end
+  #set ($ctx.stash.posts = $posts)
+#end
+
+#if ($util.isNull($viewedStatus))
+  ## not filtering on viewedStatus, so no need to pull it from db
+  #return ($ctx.stash.posts)
+#end
+
+## BatchGetItem can't handle duplicates
+#set ($ctx.stash.postIdToIndex = {})
+#set ($keys = [])
+
+#foreach ($post in $ctx.stash.posts)
+  #if ($util.isNull($post.viewedStatus))
+    #if ($post.postedByUserId == $callerUserId)
+      $util.qr($post.put('viewedStatus', 'VIEWED'))
+    #else
+      #if (! $ctx.stash.postIdToIndex.containsKey($post.postId))
+        $util.qr($ctx.stash.postIdToIndex.put($post.postId, $keys.size()))
+        $util.qr($keys.add({
+          'partitionKey': {'S': "post/$post.postId"},
+          'sortKey': {'S': "view/$callerUserId"}
+        }))
+      #end
+    #end
+  #end
+#end
+
+#if ($keys.isEmpty())
+  #return ($ctx.stash.posts)
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "BatchGetItem",
+  "tables": {
+    "${dynamoTable}": {
+      "keys": $util.toJson($keys)
+    }
+  }
+}

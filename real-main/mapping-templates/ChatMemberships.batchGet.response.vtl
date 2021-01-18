@@ -1,0 +1,24 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+
+## remove missing chat memberships from result set (in process of being deleted?)
+#set ($chatMemberships = [])
+#foreach ($item in $ctx.prev.result)
+
+  #if (! $util.isList($item))
+    ## item is an already-resolved object
+    $util.qr($chatMemberships.add($item))
+  #else
+    ## item is a [chatId, userId] list
+    #set ($lookupKey = "$item[0]/$item[1]")
+    #set ($index = $ctx.stash.idsToIndex[$lookupKey])
+    #if (! $util.isNull($ctx.result.data.${dynamoTable}[$index]))
+      #set ($chatMembership = $ctx.result.data.${dynamoTable}[$index])
+      $util.qr($chatMemberships.add($chatMembership))
+    #end
+  #end
+
+#end
+
+$util.toJson($chatMemberships)

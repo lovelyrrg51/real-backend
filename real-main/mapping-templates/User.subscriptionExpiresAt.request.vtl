@@ -1,0 +1,12 @@
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#set ($targetUser = $ctx.source)
+
+## Hide from everyone except target themselves
+#if ($callerUserId != $targetUser.userId)
+  #return
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($targetUser.subscriptionExpiresAt)
+}

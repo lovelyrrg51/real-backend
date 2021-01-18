@@ -1,0 +1,30 @@
+#if ($ctx.args.limit < 1 or $ctx.args.limit > 100)
+  $util.error('ClientError: Limit cannot be less than 1 or greater than 100', 'ClientError')
+#end
+#set ($limit = $util.defaultIfNull($ctx.args.limit, 20))
+
+{
+  "version": "2018-05-29",
+  "operation": "Query",
+  "query": {
+    "expression": "gsiK1PartitionKey = :pk AND begins_with(gsiK1SortKey, :skPrefix)",
+    "expressionValues": {
+      ":pk": { "S": "chat/$ctx.source.chatId" },
+      ":skPrefix": { "S": "member/" }
+    }
+  },
+  "index": "GSI-K1",
+  "scanIndexForward": false,
+  "limit": $limit
+  #if ($ctx.args.nextToken)
+  , "nextToken": "$ctx.args.nextToken"
+  #end
+  #if ($ctx.args.excludeUserId)
+  , "filter": {
+      "expression": "sortKey <> :sk",
+      "expressionValues": {
+        ":sk": { "S" : "member/$ctx.args.excludeUserId" }
+      },
+  }
+  #end
+}

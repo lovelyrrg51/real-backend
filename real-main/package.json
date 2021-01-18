@@ -1,0 +1,19 @@
+{
+  "name": "real-main",
+  "description": "",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "deploy": "serverless deploy"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "serverless": "~1.62.0",
+    "serverless-appsync-plugin": "^1.4.0",
+    "serverless-dotenv-plugin": "^3.0.0",
+    "serverless-plugin-aws-alerts": "^1.6.1",
+    "serverless-plugin-git-variables": "^4.0.0",
+    "serverless-plugin-split-stacks": "^1.9.3",
+    "serverless-pseudo-parameters": "^2.5.0"
+  }
+}

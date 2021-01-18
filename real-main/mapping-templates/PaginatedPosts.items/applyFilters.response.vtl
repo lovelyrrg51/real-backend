@@ -1,0 +1,29 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+#set ($viewedStatus = $ctx.args.viewedStatus)
+
+## Note: trying to #set() a variable to a computed null value
+##       doesn't work. Avoid: #set($item = arrayWithNulls[$index])
+
+## retrieve the results of the query
+#foreach ($post in $ctx.stash.posts)
+  #if ($util.isNull($post.viewedStatus))
+    #set ($index = $ctx.stash.postIdToIndex[$post.postId])
+    #if ($util.isNull($ctx.result.data.${dynamoTable}[$index]))
+      $util.qr($post.put('viewedStatus', 'NOT_VIEWED'))
+    #else
+      $util.qr($post.put('viewedStatus', 'VIEWED'))
+    #end
+  #end
+#end
+
+## filter those results
+#set ($posts = [])
+#foreach ($post in $ctx.stash.posts)
+  #if ($post.viewedStatus == $viewedStatus)
+    $util.qr($posts.add($post))
+  #end
+#end
+
+$util.toJson($posts)

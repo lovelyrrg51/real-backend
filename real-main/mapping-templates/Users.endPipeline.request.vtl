@@ -1,0 +1,26 @@
+## requires $ctx.stash.userIdAttribute and $ctx.stash.userAttribute to be set
+#set ($userIdAttr = $ctx.stash.userIdAttribute)
+#set ($userAttr = $ctx.stash.userAttribute)
+#if (! $userIdAttr || ! $userAttr)
+  $util.error('$ctx.stash.userIdAttribute and $ctx.stash.userAttribute must be set', 'ServerError')
+#end
+
+## build a map from userId to user object
+#set ($userIdToUser = {})
+#foreach ($user in $ctx.prev.result)
+  $util.qr($userIdToUser.put($user.userId, $user))
+#end
+
+## filter out items that the user object was filtered out
+#set ($items = [])
+#foreach ($item in $ctx.stash.items)
+  #if ($userIdToUser.containsKey($item[$userIdAttr]))
+    $util.qr($item.put($userAttr, $userIdToUser[$item[$userIdAttr]]))
+    $util.qr($items.add($item))
+  #end
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($items)
+}

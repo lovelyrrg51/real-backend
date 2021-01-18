@@ -1,0 +1,13 @@
+## Filter out users that are blocking caller
+
+#set ($users = [])
+#foreach ($user in $ctx.prev.result)
+  #if ($user.blockerStatus != 'BLOCKING')
+    $util.qr($users.add($user))
+  #end
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($users)
+}

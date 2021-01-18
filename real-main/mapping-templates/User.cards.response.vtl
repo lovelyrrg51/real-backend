@@ -1,0 +1,9 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+
+#foreach ($card in $ctx.result.items)
+  $util.qr($card.put('cardId', $card.partitionKey.split("/")[1]))
+#end
+
+$util.toJson($ctx.result)

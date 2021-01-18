@@ -1,0 +1,52 @@
+#set ($followStatus = $util.defaultIfNull($ctx.args.followStatus, 'FOLLOWING'))
+
+## can't request NOT_FOLLOWING
+#if ($followStatus == 'NOT_FOLLOWING')
+  $util.error('ClientError: Cannot request followStatus of NOT_FOLLOWING', 'ClientError')
+#end
+
+## we are only allowed to acces FOLLOWING followings of others
+#if ($ctx.source.userId != $ctx.identity.cognitoIdentityId and $followStatus != 'FOLLOWING')
+  $util.error('ClientError: May only query FOLLOWING relationships of other users', 'ClientError')
+#end
+
+#if ($ctx.args.limit < 1 or $ctx.args.limit > 100)
+  $util.error('ClientError: Limit cannot be less than 1 or greater than 100', 'ClientError')
+#end
+#set ($limit = $util.defaultIfNull($ctx.args.limit, 20))
+
+## If caller is blocked by target, and this field is being resolved
+## then we can be guaranteed that parent resolver filled in blockerStatus
+#if ($ctx.source.blockerStatus == 'BLOCKING')
+  #return
+#end
+
+## if the target user is private, and caller is not a follower, then return null
+#if ($ctx.source.privacyStatus == 'PRIVATE')
+  #if ($ctx.source.followedStatus != 'SELF' and $ctx.source.followedStatus != 'FOLLOWING')
+    #return
+  #end
+#end
+
+## has the user hidden their follow counts & lists?
+#if ($ctx.source.followCountsHidden and $ctx.source.userId != $ctx.identity.cognitoIdentityId)
+  #return
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "Query",
+  "query": {
+    "expression": "gsiA1PartitionKey = :pk AND begins_with(gsiA1SortKey, :skPrefix)",
+    "expressionValues": {
+      ":pk": { "S": "follower/$ctx.source.userId" },
+      ":skPrefix": { "S": "$followStatus/" }
+    }
+  },
+  "index": "GSI-A1",
+  "scanIndexForward": false,
+  "limit": $limit
+  #if ($ctx.args.nextToken)
+  , "nextToken": "$ctx.args.nextToken"
+  #end
+}

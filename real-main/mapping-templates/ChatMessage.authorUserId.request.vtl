@@ -1,0 +1,9 @@
+## When used in a ChatMessageNotification, authorUserId is already filled in
+#if (!$util.isNull($ctx.source.authorUserId))
+  #return ($ctx.source.authorUserId)
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($ctx.source.userId)
+}

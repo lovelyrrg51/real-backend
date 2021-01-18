@@ -1,0 +1,34 @@
+## Expects $ctx.prev.result to be a list of objects which may be:
+##  - a postId string
+##  - a post object (which will flow through this resolver without change)
+
+## BatchGetItem can't handle duplicates
+#set ($ctx.stash.postIdToIndex = {})
+#set ($keys = [])
+
+#foreach ($item in $ctx.prev.result)
+  #if ($util.isString($item))
+    #set ($postId = $item)
+    #if (! $ctx.stash.postIdToIndex.containsKey($postId))
+      $util.qr($ctx.stash.postIdToIndex.put($postId, $keys.size()))
+      $util.qr($keys.add({
+        'partitionKey': {'S': "post/$postId"},
+        'sortKey': {'S': '-'}
+      }))
+    #end
+  #end
+#end
+
+#if ($keys.isEmpty())
+  #return ($ctx.prev.result)
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "BatchGetItem",
+  "tables": {
+    "${dynamoTable}": {
+      "keys": $util.toJson($keys)
+    }
+  }
+}

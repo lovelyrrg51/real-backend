@@ -1,0 +1,38 @@
+#if ($ctx.args.limit < 1 or $ctx.args.limit > 100)
+  $util.error('ClientError: Limit cannot be less than 1 or greater than 100', 'ClientError')
+#end
+#set ($limit = $util.defaultIfNull($ctx.args.limit, 20))
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+
+## hidden from everyone except owner of the post
+## note that the posts's postedBy is guaranteed to be filled in by the parent
+#if ($callerUserId != $ctx.source.postedBy.userId)
+  #return
+#end
+
+## check if user has choosen to hide their view counts
+#if ($ctx.source.postedBy.viewCountsHidden)
+  #return
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "Query",
+  "query": {
+    "expression": "gsiA1PartitionKey = :pk",
+    "expressionValues": {
+      ":pk": { "S": "postView/$ctx.source.postId" }
+    }
+  },
+  "filter": {
+    "expression": "sortKey <> :sk",
+    "expressionValues": {
+      ":sk": { "S": "view/$callerUserId" }
+    }
+  },
+  "index": "GSI-A1",
+  "limit": $limit
+  #if ($ctx.args.nextToken)
+  , "nextToken": "$ctx.args.nextToken"
+  #end
+}

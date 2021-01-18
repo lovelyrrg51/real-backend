@@ -1,0 +1,17 @@
+- type: Album
+  field: art
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+  caching:
+    keys:
+      - $context.source.artHash
+
+- type: Album
+  field: postCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: Album
+  field: posts
+  dataSource: DynamodbDataSource

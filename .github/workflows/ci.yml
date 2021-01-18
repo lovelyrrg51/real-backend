@@ -1,0 +1,118 @@
+name: Continuous Integration
+on: [push, pull_request]
+jobs:
+
+  real-auth-pytest:
+    runs-on: ubuntu-latest
+    env:
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_XRAY_SDK_ENABLED: false
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@v1
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+
+    - name: Install Poetry
+      uses: dschep/install-poetry-action@v1.3
+
+    - name: Install dependencies
+      run: cd real-auth && poetry install
+
+    - name: Test with pytest
+      run: cd real-auth && poetry run pytest tests
+
+  real-main-pytest:
+    runs-on: ubuntu-latest
+    env:
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_XRAY_SDK_ENABLED: false
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@v1
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+
+    - name: Install Poetry
+      uses: dschep/install-poetry-action@v1.3
+
+    - name: Install dependencies
+      run: cd real-main && poetry install
+
+    - name: Test with pytest
+      run: cd real-main && poetry run pytest -n auto app_tests migrations_tests
+
+    - name: Archive test coverage results
+      uses: actions/upload-artifact@v2
+      with:
+        name: coverage-report
+        path: real-main/htmlcov
+
+  python-lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@v1
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+
+    - name: Install python lint tools
+      run: |
+        pip install --pre 'black<21'
+        pip install 'flake8<4' 'flake8-bugbear<21' 'isort<6' 'pylint<3'
+
+    - name: Lint real-auth
+      working-directory: real-auth
+      run: |
+        black --check --diff .
+        isort --check --diff .
+        flake8 .
+        pylint real_auth tests
+
+    - name: Lint real-cloudfront
+      working-directory: real-cloudfront
+      run: |
+        black --check --diff .
+        isort --check --diff .
+        flake8 .
+        pylint edge_app
+
+    - name: Lint real-main
+      working-directory: real-main
+      run: |
+        black --check --diff .
+        isort --check --diff .
+        flake8 .
+        pylint app app_tests migrations migrations_tests
+
+  javascript-lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@v1
+
+    - name: Set up Node 12.X
+      uses: actions/setup-node@v1
+      with:
+        node-version: '12.x'
+
+    - name: Install dependencies
+      run: |
+        yarn --cwd integration-testing add eslint
+
+    - name: Lint with eslint
+      run: |
+        yarn --cwd integration-testing run lint

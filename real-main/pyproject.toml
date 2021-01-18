@@ -1,0 +1,66 @@
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
+
+[tool.black]
+line-length = 114
+target-version = ['py38']
+skip-string-normalization = true
+exclude = '''
+(
+  /(
+      \.git          # root of the project
+    | node_modules
+  )/
+)
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 114
+
+[tool.poetry]
+name = "real-main"
+version = "0.1.0"
+description = ""
+authors = ["Mike Fogel <mike@real.app>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+[tool.poetry.dev-dependencies]
+boto3 = "^1.11.9"
+pytest = "^6.0.1"
+requests-mock = "^1.7.0"
+cryptography = "^2.8"
+requests-aws4auth = "^0.9"
+pillow = "^7.2.0"
+elasticsearch = "^7.5.1"
+pendulum = "^2.0.5"
+pytest-cov = "2.10.1"
+colorthief = "^0.2.1"
+python-dotenv = "^0.12.0"
+gql = "^0.4.0"
+google-auth = "^1.12.0"
+CacheControl = "^0.12.6"
+pyheif = "^0.5.1"
+pytest-xdist = "^1.31.0"
+pytest-env = "^0.6.2"
+aws-xray-sdk = "^2.5.0"
+pytest-lazy-fixture = "^0.6.3"
+moto = "1.3.15.dev969"
+stringcase = "^1.2.0"
+pyjwt = "^1.7.1"
+amplitude-python = "^0.13"
+
+[tool.pylint.'MESSAGES CONTROL']
+max-line-length = 114
+disable = "C, R, import-error, attribute-defined-outside-init, fixme, no-name-in-module, unused-argument, logging-fstring-interpolation, no-member, super-init-not-called, protected-access, broad-except, unused-import, arguments-differ, redefined-outer-name, unsubscriptable-object"
+
+[tool.pytest.ini_options]
+addopts = "--cov app --cov migrations --cov-report html"
+env = [
+  "AWS_DEFAULT_REGION=us-east-1",
+  "AWS_XRAY_SDK_ENABLED=false",
+]
+filterwarnings = "ignore:the imp module is deprecated in favour of importlib.*:DeprecationWarning:boto:40"

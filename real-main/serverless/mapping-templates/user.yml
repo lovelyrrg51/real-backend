@@ -1,0 +1,248 @@
+- type: User
+  field: photo
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+  caching:
+    keys:
+      - $context.source.photoPostId
+
+- type: User
+  field: followerStatus
+  dataSource: DynamodbDataSource
+
+- type: User
+  field: followCountsHidden
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: followedCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: followedsCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: followerCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: followersCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: followedUsers
+  dataSource: DynamodbDataSource
+
+- type: User
+  field: followedUsersWithStories
+  dataSource: DynamodbDataSource
+
+- type: User
+  field: followerUsers
+  dataSource: DynamodbDataSource
+
+- type: User
+  field: postCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: userStatus
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: languageCode
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: themeCode
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: bio
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: subscriptionLevel
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: subscriptionExpiresAt
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: email
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: phoneNumber
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: acceptedEULAVersion
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: commentsDisabled
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: likesDisabled
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: sharingDisabled
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: verificationHidden
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: blockedStatus
+  dataSource: DynamodbDataSource
+
+- type: User
+  field: viewCountsHidden
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: feed
+  dataSource: DynamodbFeedDataSource
+
+- type: User
+  field: stories
+  dataSource: DynamodbDataSource
+
+- type: User
+  field: posts
+  dataSource: DynamodbDataSource
+
+- type: User
+  field: postsWithUnviewedComments
+  dataSource: DynamodbDataSource
+
+- type: User
+  field: postsByNewCommentActivity
+  dataSource: DynamodbDataSource
+
+- type: User
+  field: postViewedByCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: onymouslyLikedPosts
+  dataSource: DynamodbDataSource
+  request: User.likedPosts.request.vtl
+  response: User.likedPosts.response.vtl
+
+- type: User
+  field: anonymouslyLikedPosts
+  dataSource: DynamodbDataSource
+  request: User.likedPosts.request.vtl
+  response: User.likedPosts.response.vtl
+
+- type: User
+  field: blockedUsers
+  dataSource: DynamodbDataSource
+
+- type: User
+  field: cardCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: cards
+  dataSource: DynamodbDataSource
+
+- type: User
+  field: albumCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: albums
+  dataSource: DynamodbDataSource
+
+- type: User
+  field: chatCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: chatsWithUnviewedMessagesCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: chats
+  dataSource: DynamodbDataSource
+
+- type: User
+  field: directChat
+  dataSource: DynamodbDataSource
+
+- type: User
+  field: location 
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: matchAgeRange
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: matchGenders
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: matchLocationRadius
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: matchHeightRange
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: datingStatus
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: User
+  field: matchStatus
+  dataSource: DynamodbMatchesDataSource
+
+- type: User
+  field: matchedUsers
+  dataSource: DynamodbMatchesDataSource
+
+- type: User
+  field: lastFoundContactsAt
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl

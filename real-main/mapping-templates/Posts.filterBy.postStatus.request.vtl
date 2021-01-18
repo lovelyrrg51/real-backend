@@ -1,0 +1,14 @@
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+
+## posts that are not in COMPLETED state are visible only to post owner
+#set ($posts = [])
+#foreach ($post in $ctx.prev.result)
+  #if ($post.postedByUserId == $callerUserId || $post.postStatus == 'COMPLETED')
+    $util.qr($posts.add($post))
+  #end
+#end
+
+{
+  "version": "2018-05-29",
+  "payload": $util.toJson($posts)
+}

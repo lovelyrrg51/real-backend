@@ -1,0 +1,49 @@
+# Welcome to Serverless!
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+
+service: real-lambda-layers
+frameworkVersion: '>=1.0.0 <2.0.0'
+
+# Note that this is broken out into a seperate project so that serverless doesn't
+# upload this several-MB package for every deploy.
+# https://forum.serverless.com/t/layers-upload-on-each-deploy/6634/2
+
+provider:
+  name: aws
+  profile: real-${self:provider.stage}
+  stackName: real-${self:provider.stage}-lambda-layers
+  stage: ${opt:stage, 'dev'}
+  runtime: python3.8
+
+custom:
+  pythonRequirements:
+    dockerizePip: non-linux
+    layer:
+      compatibleRuntimes:
+        - python3.8
+
+
+resources:
+  Resources:
+    PythonRequirementsLambdaLayer:
+      UpdateReplacePolicy: Retain
+
+  Outputs:
+
+    PythonRequirementsLambdaLayer:
+      Value: !Ref PythonRequirementsLambdaLayer
+
+    GitBranch:
+      Value: ${git:branch}
+
+    GitDescribe:
+      Value: ${git:describeLight}
+
+    GitIsDirty:
+      Value: ${git:isDirty}
+
+plugins:
+  - serverless-python-requirements
+  - serverless-plugin-git-variables

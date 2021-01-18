@@ -1,0 +1,19 @@
+#set ($usernameRegex = '[a-zA-Z0-9_.]{3,30}')
+#set ($username = $ctx.args.username)
+
+#if (! $username.matches($usernameRegex))
+  #return ('INVALID')
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "Query",
+  "query": {
+    "expression": "gsiA1PartitionKey = :pk",
+    "expressionValues": {
+      ":pk": { "S": "username/$username" }
+    }
+  },
+  "index": "GSI-A1",
+  "limit": 1
+}

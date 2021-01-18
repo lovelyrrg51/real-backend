@@ -1,0 +1,13 @@
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#set ($targetUserId = $ctx.source.userId)
+
+## private to the user themselves
+#if ($callerUserId != $targetUserId)
+  #return
+#end
+
+#set ($count = $util.defaultIfNull($ctx.source.cardCount, 0))
+{
+  "version": "2018-05-29",
+  "payload": $count,
+}

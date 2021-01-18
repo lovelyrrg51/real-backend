@@ -1,0 +1,5 @@
+[flake8]
+# ignore flake8 rules that conflict with our black config
+# https://github.com/psf/black/blob/master/.flake8
+ignore=E203,E501,W503
+extend-exclude=node_modules

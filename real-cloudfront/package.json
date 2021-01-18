@@ -1,0 +1,15 @@
+{
+  "name": "real-cloudfront",
+  "description": "",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "deploy": "serverless deploy"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@silvermine/serverless-plugin-cloudfront-lambda-edge": "^2.1.1",
+    "serverless": "^1.63.0",
+    "serverless-plugin-git-variables": "^4.0.0"
+  }
+}

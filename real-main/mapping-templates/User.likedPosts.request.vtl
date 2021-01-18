@@ -1,0 +1,38 @@
+#if ($ctx.args.limit < 1 or $ctx.args.limit > 100)
+  $util.error('ClientError: Limit cannot be less than 1 or greater than 100', 'ClientError')
+#end
+#set ($limit = $util.defaultIfNull($ctx.args.limit, 20))
+
+#if ($ctx.source.blockerStatus == 'BLOCKING')
+  #return
+#end
+
+#if ($ctx.info.fieldName == 'onymouslyLikedPosts')
+  #set ($likeStatus = 'ONYMOUSLY_LIKED')
+#elseif ($ctx.info.fieldName == 'anonymouslyLikedPosts')
+  #set ($likeStatus = 'ANONYMOUSLY_LIKED')
+  ## private to the user themselves
+  #if ($ctx.source.blockerStatus != 'SELF')
+    #return
+  #end
+#else
+  $util.error("Unexpected value for fieldName: `${ctx.info.fieldName}`", 'ServerError')
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "Query",
+  "query": {
+    "expression": "gsiA1PartitionKey = :pk and begins_with(gsiA1SortKey, :skPrefix)",
+    "expressionValues": {
+      ":pk": { "S": "like/$ctx.source.userId" },
+      ":skPrefix": { "S": "$likeStatus" }
+    }
+  },
+  "index": "GSI-A1",
+  "scanIndexForward": false,
+  "limit": $limit
+  #if ($ctx.args.nextToken)
+    , "nextToken": "$ctx.args.nextToken"
+  #end
+}

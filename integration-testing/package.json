@@ -1,0 +1,75 @@
+{
+  "name": "integration-testing",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": "^12"
+  },
+  "scripts": {
+    "lint": "eslint '**/*.js'",
+    "test": "jest -c ./jest.config.json",
+    "test-all": "yarn run test-concurrent; r1=$?; yarn run test-sequential; r2=$?; [[ $r1 -eq 0 && $r2 -eq 0 ]] && true || false",
+    "test-concurrent": "jest --silent --noStackTrace -c ./jest.concurrent.config.json",
+    "test-sequential": "jest --silent --noStackTrace -c ./jest.sequential.config.json"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "es6": true,
+      "node": true
+    },
+    "extends": [
+      "eslint:recommended",
+      "plugin:jest/recommended",
+      "plugin:prettier/recommended"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 2018,
+      "sourceType": "module"
+    },
+    "plugins": [
+      "jest"
+    ],
+    "rules": {
+      "jest/no-disabled-tests": "off"
+    }
+  },
+  "prettier": {
+    "bracketSpacing": false,
+    "printWidth": 114,
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "all"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "aws-appsync": "^3.0.2",
+    "aws-sdk": "^2.614.0",
+    "caller-id": "^0.1.0",
+    "cross-fetch": "^3.0.6",
+    "dotenv": "^8.1.0",
+    "elasticsearch": "^16.6.0",
+    "es6-promise": "^4.2.8",
+    "eslint": "^6.8.0",
+    "eslint-config-prettier": "^6.11.0",
+    "eslint-plugin-jest": "^23.13.2",
+    "eslint-plugin-prettier": "^3.1.3",
+    "exif-reader": "^1.0.3",
+    "generate-password": "^1.5.0",
+    "got": "^11.7.0",
+    "graphql-tag": "^2.10.3",
+    "http-aws-es": "^6.0.0",
+    "jest": "^26.0.1",
+    "jest-circus": "^26.3.0",
+    "jpeg-js": "^0.4.1",
+    "jwt-decode": "^2.2.0",
+    "md5": "^2.2.1",
+    "moment": "^2.24.0",
+    "prettier": "^2.0.5",
+    "prompt": "^1.0.0",
+    "request-image-size": "^2.1.0",
+    "sharp": "^0.25.2",
+    "tough-cookie": "^4.0.0",
+    "uuid": "^3.4.0"
+  }
+}

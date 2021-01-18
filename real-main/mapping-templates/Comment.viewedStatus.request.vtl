@@ -1,0 +1,21 @@
+#if (! $util.isNull($ctx.source.viewedStatus))
+  #return ($ctx.source.viewedStatus)
+#end
+
+#set ($callerUserId = $ctx.identity.cognitoIdentityId)
+#set ($authorId = $ctx.source.userId)
+#set ($postId = $ctx.source.postId)
+
+## Author has always viewed the message
+#if ($callerUserId == $authorId)
+  #return ('VIEWED')
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "GetItem",
+  "key": {
+    "partitionKey": {"S": "post/$postId"},
+    "sortKey": {"S": "view/$callerUserId"}
+  }
+}

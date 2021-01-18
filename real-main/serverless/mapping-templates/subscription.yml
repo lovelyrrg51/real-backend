@@ -1,0 +1,23 @@
+- type: Subscription
+  field: onNotification
+  dataSource: NoneDataSource
+  request: Subscription.byUserId.request.vtl
+  response: PassThru.response.vtl
+
+- type: Subscription
+  field: onCardNotification
+  dataSource: NoneDataSource
+  request: Subscription.byUserId.request.vtl
+  response: PassThru.response.vtl
+
+- type: Subscription
+  field: onChatMessageNotification
+  dataSource: NoneDataSource
+  request: Subscription.byUserId.request.vtl
+  response: PassThru.response.vtl
+
+- type: Subscription
+  field: onPostNotification
+  dataSource: NoneDataSource
+  request: Subscription.byUserId.request.vtl
+  response: PassThru.response.vtl

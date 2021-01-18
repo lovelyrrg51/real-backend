@@ -1,0 +1,39 @@
+#if ($ctx.args.limit < 1 or $ctx.args.limit > 100)
+  $util.error('ClientError: Limit cannot be less than 1 or greater than 100', 'ClientError')
+#end
+#set ($limit = $util.defaultIfNull($ctx.args.limit, 20))
+
+#set ($targetUser = $ctx.source)
+
+## hide if albums if target user is blocking caller
+## parent resolver guaranteed to have filled in blockerStatus
+#if ($targetUser.blockerStatus == 'BLOCKING')
+  #return
+#end
+
+## hide albums if target user is private and caller is not a follower or self
+## parent resolver guaranteed to have filled in followedStatus
+#if ($targetUser.privacyStatus == 'PRIVATE')
+  #if ($targetUser.followedStatus != 'SELF' and $targetUser.followedStatus != 'FOLLOWING')
+    #return
+  #end
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "Query",
+  "query": {
+    "expression": "gsiA1PartitionKey = :pk",
+    "expressionValues": {
+      ":pk": { "S": "album/$targetUser.userId" },
+    }
+  },
+  "index": "GSI-A1",
+  "limit": $limit
+  #if ($ctx.args.reverse)
+    , "scanIndexForward": false
+  #end
+  #if ($ctx.args.nextToken)
+    , "nextToken": "$ctx.args.nextToken"
+  #end
+}

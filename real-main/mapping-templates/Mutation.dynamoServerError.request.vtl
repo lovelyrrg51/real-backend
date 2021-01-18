@@ -1,0 +1,14 @@
+## Throws a server error for an invalid query (duplicate key)
+
+{
+  "version": "2018-05-29",
+  "operation": "BatchGetItem",
+  "tables": {
+    "${dynamoTable}": {
+      "keys": [
+        {"partitionKey": {"S": "pk"}, "sortKey": {"S": "sk"}},
+        {"partitionKey": {"S": "pk"}, "sortKey": {"S": "sk"}}
+      ]
+    }
+  }
+}

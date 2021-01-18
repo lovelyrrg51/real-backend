@@ -1,0 +1,35 @@
+## Expects $ctx.prev.result to be a list of objects which may be:
+##  - an list of [chatId, userId]
+##  - a chat membership object (which will flow through this resolver without change)
+
+## BatchGetItem can't handle duplicates
+#set ($ctx.stash.idsToIndex = {})
+#set ($keys = [])
+
+#foreach ($item in $ctx.prev.result)
+  #if ($util.isList($item))
+    ## item is a [chatId, userId] list
+    #set ($lookupKey = "$item[0]/$item[1]")
+    #if (! $ctx.stash.idsToIndex.containsKey($lookupKey))
+      $util.qr($ctx.stash.idsToIndex.put($lookupKey, $keys.size()))
+      $util.qr($keys.add({
+        'partitionKey': {'S': "chat/$item[0]"},
+        'sortKey': {'S': "member/$item[1]"}
+      }))
+    #end
+  #end
+#end
+
+#if ($keys.isEmpty())
+  #return ($ctx.prev.result)
+#end
+
+{
+  "version": "2018-05-29",
+  "operation": "BatchGetItem",
+  "tables": {
+    "${dynamoTable}": {
+      "keys": $util.toJson($keys)
+    }
+  }
+}

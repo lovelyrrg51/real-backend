@@ -1,0 +1,15 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+
+#set ($userIds = [])
+#set ($prefix = "member/")
+#foreach ($item in $ctx.result.items)
+  #set ($userId = $item.sortKey.substring($prefix.length()))
+  $util.qr($userIds.add($userId))
+#end
+
+$util.toJson({
+  'nextToken': $ctx.result.nextToken,
+  'items': $userIds
+})

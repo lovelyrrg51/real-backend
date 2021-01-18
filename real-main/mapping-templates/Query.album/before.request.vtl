@@ -1,0 +1,5 @@
+## For Users.beginPipeline & Users.endPipeline
+#set ($ctx.stash.userIdAttribute = 'ownedByUserId')
+#set ($ctx.stash.userAttribute = 'ownedBy')
+
+$util.toJson([$ctx.args.albumId])

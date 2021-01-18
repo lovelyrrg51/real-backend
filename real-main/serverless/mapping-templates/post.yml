@@ -1,0 +1,133 @@
+- type: Post
+  field: flagStatus
+  dataSource: DynamodbDataSource
+
+- type: Post
+  field: likeStatus
+  dataSource: DynamodbDataSource
+
+- type: Post
+  field: viewedStatus
+  dataSource: DynamodbDataSource
+
+- type: Post
+  field: originalPost
+  request: Post.originalPost/before.request.vtl
+  response: Post.originalPost/after.response.vtl
+  kind: PIPELINE
+  functions:
+    - Posts.batchGet
+    - Posts.filterBy.postStatus
+    - Users.beginPipeline
+    - Users.batchGet
+    - Users.batchGet.blockerStatus
+    - Users.filterBy.blockerStatus
+    - Users.batchGet.followedStatus
+    - Users.filterBy.followedStatus
+    - Users.endPipeline
+
+- type: Post
+  field: viewedByCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: Post
+  field: viewedBy
+  dataSource: DynamodbDataSource
+
+- type: Post
+  field: commentsDisabled
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: Post
+  field: likesDisabled
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: Post
+  field: sharingDisabled
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: Post
+  field: verificationHidden
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: Post
+  field: onymousLikeCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: Post
+  field: anonymousLikeCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: Post
+  field: onymouslyLikedBy
+  dataSource: DynamodbDataSource
+
+- type: Post
+  field: textTaggedUsers
+  request: Source.textTaggedUsers/before.request.vtl
+  response: Source.textTaggedUsers/after.response.vtl
+  kind: PIPELINE
+  functions:
+    - Users.batchGet
+    - Users.batchGet.blockerStatus
+    - Users.filterBy.blockerStatus
+    - Users.batchGet.followedStatus
+
+- type: Post
+  field: commentCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: Post
+  field: commentsCount
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl
+
+- type: Post
+  field: comments
+  dataSource: DynamodbDataSource
+  response: PassThru.response.vtl
+
+- type: Post
+  field: album
+  dataSource: DynamodbDataSource
+
+- type: Post
+  field: image
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+  caching:
+    keys:
+      - $context.source.postId
+      - $context.source.postStatus
+
+- type: Post
+  field: imageUploadUrl
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Post
+  field: video
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Post
+  field: videoUploadUrl
+  dataSource: LambdaDataSource
+  request: false
+  response: Lambda.response.vtl
+
+- type: Post
+  field: hasNewCommentActivity
+  dataSource: NoneDataSource
+  response: PassThru.response.vtl

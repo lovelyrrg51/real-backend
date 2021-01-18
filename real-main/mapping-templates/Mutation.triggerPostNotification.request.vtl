@@ -1,0 +1,19 @@
+## off limits to cognito-authenticated clients
+#if (! $util.isNull($ctx.identity.cognitoIdentityId))
+  $util.error('ClientError: Access denied', 'ClientError')
+#end
+
+#set ($input = $ctx.args.input)
+
+$util.toJson({
+  'version': '2018-05-29',
+  'payload': {
+    'userId': $input.userId,
+    'type': $input.type,
+    'post': {
+      'postId': $input.postId,
+      'postStatus': $input.postStatus,
+      'isVerified': $input.isVerified
+    }
+  }
+})

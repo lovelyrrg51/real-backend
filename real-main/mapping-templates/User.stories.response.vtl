@@ -1,0 +1,9 @@
+#if ($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+
+#foreach ($post in $ctx.result.items)
+  $util.qr($post.put('postedBy', $ctx.source))
+#end
+
+$util.toJson($ctx.result)
